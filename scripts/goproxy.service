@@ -1,0 +1,16 @@
+[Unit]
+Description=goproxy service
+Documentation=https://goproxy.io
+After=network-online.target
+
+[Service]
+User=root
+Group=root
+LimitNOFILE=65536
+ExecStart=goproxy -listen=0.0.0.0:80
+KillMode=control-group
+SuccessExitStatus=2
+
+[Install]
+WantedBy=multi-user.target
+Alias=goproxy.service
