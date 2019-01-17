@@ -10,17 +10,17 @@ import (
 	"github.com/sirkon/goproxy/source"
 )
 
-// factory creates source for VCS repositories
-type factory struct {
+// plugin creates source for VCS repositories
+type plugin struct {
 	rootDir string
 
-	// accessLock is used for
+	// accessLock is for access to inWork
 	accessLock sync.Locker
 	inWork     map[string]modfetch.Repo
 }
 
-// NewFactory creates new valid factory instance
-func NewFactory(rootDir string) (f source.Factory, err error) {
+// NewPlugin creates new valid plugin instance
+func NewPlugin(rootDir string) (f source.Plugin, err error) {
 	setupEnv(rootDir)
 	stat, err := os.Stat(rootDir)
 	if os.IsNotExist(err) {
@@ -45,7 +45,7 @@ func NewFactory(rootDir string) (f source.Factory, err error) {
 		return nil, fmt.Errorf("failed to set up GO111MODULE environment variable: %s", err)
 	}
 
-	return &factory{
+	return &plugin{
 		rootDir:    rootDir,
 		inWork:     map[string]modfetch.Repo{},
 		accessLock: &sync.Mutex{},
@@ -53,7 +53,7 @@ func NewFactory(rootDir string) (f source.Factory, err error) {
 }
 
 // Source creates a source for a module with given path
-func (f *factory) Source(req *http.Request, prefix string) (source.Source, error) {
+func (f *plugin) Source(req *http.Request, prefix string) (source.Source, error) {
 	path, _, err := source.GetModInfo(req, prefix)
 	if err != nil {
 		return nil, err
@@ -70,16 +70,16 @@ func (f *factory) Source(req *http.Request, prefix string) (source.Source, error
 }
 
 // Leave unset a lock of a given module
-func (f *factory) Leave(s source.Source) error {
+func (f *plugin) Leave(s source.Source) error {
 	return nil
 }
 
 // Close ...
-func (f *factory) Close() error {
+func (f *plugin) Close() error {
 	return nil
 }
 
-func (f *factory) getRepo(path string) (repo modfetch.Repo, err error) {
+func (f *plugin) getRepo(path string) (repo modfetch.Repo, err error) {
 	f.accessLock.Lock()
 	defer f.accessLock.Unlock()
 	repo, ok := f.inWork[path]

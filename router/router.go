@@ -4,7 +4,7 @@ import (
 	"github.com/sirkon/goproxy/source"
 )
 
-// Router routes to some factory
+// Router routes to some plugin
 // TODO: implement prefix tree based router
 type Router struct {
 	tree *node
@@ -17,12 +17,12 @@ func NewRouter() (*Router, error) {
 	}, nil
 }
 
-// AddRoute add factory for a given path mask
-func (r *Router) AddRoute(mask string, f source.Factory) error {
+// AddRoute add plugin for a given path mask
+func (r *Router) AddRoute(mask string, f source.Plugin) error {
 	return r.tree.addNode(mask, f)
 }
 
-// Factory returns factory for given route
-func (r *Router) Factory(path string) source.Factory {
+// Plugin returns plugin for given route
+func (r *Router) Factory(path string) source.Plugin {
 	return r.tree.getNode(path)
 }

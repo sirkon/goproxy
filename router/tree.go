@@ -13,19 +13,19 @@ type nodeExtension struct {
 }
 
 type node struct {
-	f       source.Factory
+	f       source.Plugin
 	further []*nodeExtension
 }
 
-func (n *node) addNode(path string, f source.Factory) error {
+func (n *node) addNode(path string, f source.Plugin) error {
 	return n.realAdd(path, path, f)
 }
 
-func (n *node) getNode(path string) source.Factory {
+func (n *node) getNode(path string) source.Plugin {
 	return n.realGet(path, path)
 }
 
-func (n *node) realAdd(path string, origPath string, f source.Factory) error {
+func (n *node) realAdd(path string, origPath string, f source.Plugin) error {
 	if len(path) == 0 {
 		if n.f == nil {
 			n.f = f
@@ -100,7 +100,7 @@ func commonPrefix(p1 string, p2 string) string {
 	return ""
 }
 
-func (n *node) realGet(path string, origPath string) source.Factory {
+func (n *node) realGet(path string, origPath string) source.Plugin {
 	for _, ne := range n.further {
 		if strings.HasPrefix(path, ne.path) {
 			res := ne.node.realGet(path[len(ne.path):], origPath)

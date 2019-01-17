@@ -9,13 +9,13 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var _ source.Factory = factory("")
+var _ source.Plugin = plugin("")
 
-type factory string
+type plugin string
 
-func (factory) Source(req *http.Request, prefix string) (source.Source, error) { panic("implement me") }
-func (factory) Leave(source source.Source) error                               { panic("implement me") }
-func (factory) Close() error                                                   { panic("implement me") }
+func (plugin) Source(req *http.Request, prefix string) (source.Source, error) { panic("implement me") }
+func (plugin) Leave(source source.Source) error                               { panic("implement me") }
+func (plugin) Close() error                                                   { panic("implement me") }
 
 func nodeLists(n *node) [][]string {
 	res := [][]string{}
@@ -47,19 +47,19 @@ func nodeLists(n *node) [][]string {
 }
 
 func TestNode(t *testing.T) {
-	n := &node{f: factory("a")}
-	require.Error(t, n.addNode("", factory("α")))
-	if err := n.addNode("gitlab.stageoffice.ru", factory("b")); err != nil {
+	n := &node{f: plugin("a")}
+	require.Error(t, n.addNode("", plugin("α")))
+	if err := n.addNode("gitlab.stageoffice.ru", plugin("b")); err != nil {
 		t.Fatal(err)
 	}
-	if err := n.addNode("gitlab.com", factory("c")); err != nil {
+	if err := n.addNode("gitlab.com", plugin("c")); err != nil {
 		t.Fatal(err)
 	}
-	if err := n.addNode("gitlab.stageoffice.ru/UCS-COMMON/schema", factory("d")); err != nil {
+	if err := n.addNode("gitlab.stageoffice.ru/UCS-COMMON/schema", plugin("d")); err != nil {
 		t.Fatal(err)
 	}
-	require.Error(t, n.addNode("gitlab.stageoffice.ru/UCS-COMMON/schema", factory("δ")))
-	if err := n.addNode("gitlab.stageoffice.ru/UCS-CADDY-PLUGINS", factory("e")); err != nil {
+	require.Error(t, n.addNode("gitlab.stageoffice.ru/UCS-COMMON/schema", plugin("δ")))
+	if err := n.addNode("gitlab.stageoffice.ru/UCS-CADDY-PLUGINS", plugin("e")); err != nil {
 		t.Fatal(err)
 	}
 
@@ -117,16 +117,16 @@ func TestNode(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			res := n.getNode(tt.url)
-			if string(res.(factory)) != tt.expected {
-				t.Errorf("factory %v expected for url %s, got %v", factory(tt.expected), tt.url, res)
+			if string(res.(plugin)) != tt.expected {
+				t.Errorf("plugin %v expected for url %s, got %v", plugin(tt.expected), tt.url, res)
 			}
 		})
 	}
 
-	if err := n.addNode("gitlab.stageoffice.ru/UCS-PLATFORM/marker", factory("f")); err != nil {
+	if err := n.addNode("gitlab.stageoffice.ru/UCS-PLATFORM/marker", plugin("f")); err != nil {
 		t.Fatal(err)
 	}
-	if err := n.addNode("gitlab.stageoffice.ru/UCS-PLATFORM", factory("g")); err != nil {
+	if err := n.addNode("gitlab.stageoffice.ru/UCS-PLATFORM", plugin("g")); err != nil {
 		t.Fatal(err)
 	}
 	lists = nodeLists(n)
@@ -140,7 +140,7 @@ func TestNode(t *testing.T) {
 		{"gitlab.", "stageoffice.ru", "/UCS-", "PLATFORM", "/marker"},
 	}, lists)
 
-	if err := n.addNode("somehost.com", factory("y")); err != nil {
+	if err := n.addNode("somehost.com", plugin("y")); err != nil {
 		t.Fatal(err)
 	}
 	lists = nodeLists(n)
@@ -155,7 +155,7 @@ func TestNode(t *testing.T) {
 		{"somehost.com"},
 	}, lists)
 
-	if err := n.addNode("gitlab.stageoffice.ru/UCS-C", factory("z")); err != nil {
+	if err := n.addNode("gitlab.stageoffice.ru/UCS-C", plugin("z")); err != nil {
 		t.Fatal(err)
 	}
 	lists = nodeLists(n)

@@ -4,8 +4,8 @@ import (
 	"net/http"
 )
 
-// Factory gives a way to get a source object for a request
-type Factory interface {
+// Plugin gives a way to get a source object for a request
+type Plugin interface {
 	Source(req *http.Request, prefix string) (Source, error)
 	Leave(source Source) error
 	Close() error

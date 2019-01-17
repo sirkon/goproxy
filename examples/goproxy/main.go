@@ -47,7 +47,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	legacy, err := vcs.NewFactory(cacheDir)
+	legacy, err := vcs.NewPlugin(cacheDir)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -56,7 +56,7 @@ func main() {
 	}
 
 	if len(gitlabHost) > 0 {
-		gl := gitlab.NewFactory(gitlabHost, true)
+		gl := gitlab.NewPlugin(gitlabHost, true)
 		if err := r.AddRoute("gitlab", gl); err != nil {
 			log.Fatal(err)
 		}

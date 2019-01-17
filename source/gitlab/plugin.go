@@ -8,48 +8,48 @@ import (
 	"github.com/sirkon/goproxy/source"
 )
 
-// factory of sources for gitlab
-type factory struct {
+// plugin of sources for gitlab
+type plugin struct {
 	client   Client
 	needAuth bool
 	token    string
 }
 
-// NewFactory constructor
-func NewFactory(url string, needAuth bool) source.Factory {
-	return &factory{
+// NewPlugin constructor
+func NewPlugin(url string, needAuth bool) source.Plugin {
+	return &plugin{
 		client:   NewClient(url, &http.Client{}),
 		needAuth: needAuth,
 	}
 }
 
-// NewFactoryToken constructor
-func NewFactoryToken(url, token string) source.Factory {
-	return &factory{
+// NewPluginToken constructor
+func NewPluginToken(url, token string) source.Plugin {
+	return &plugin{
 		client:   NewClient(url, &http.Client{}),
 		token:    token,
 		needAuth: true,
 	}
 }
 
-// NewFactoryGitlabClient constructor with given gitlab client
-func NewFactoryGitlabClient(needAuth bool, client Client) source.Factory {
-	return &factory{
+// NewPluginGitlabClient constructor with given gitlab client
+func NewPluginGitlabClient(needAuth bool, client Client) source.Plugin {
+	return &plugin{
 		client:   client,
 		needAuth: needAuth,
 	}
 }
 
-// NewFactoryGitlabTokenClient constructor with given gitlab client
-func NewFactoryGitlabTokenClient(token string, client Client) source.Factory {
-	return &factory{
+// NewPluginGitlabTokenClient constructor with given gitlab client
+func NewPluginGitlabTokenClient(token string, client Client) source.Plugin {
+	return &plugin{
 		client:   client,
 		token:    token,
 		needAuth: true,
 	}
 }
 
-func (f *factory) Source(req *http.Request, prefix string) (source.Source, error) {
+func (f *plugin) Source(req *http.Request, prefix string) (source.Source, error) {
 	path, _, err := source.GetModInfo(req, prefix)
 	if err != nil {
 		return nil, err
@@ -80,10 +80,10 @@ func (f *factory) Source(req *http.Request, prefix string) (source.Source, error
 	}, nil
 }
 
-func (f *factory) Leave(source source.Source) error {
+func (f *plugin) Leave(source source.Source) error {
 	return nil
 }
 
-func (f *factory) Close() error {
+func (f *plugin) Close() error {
 	return nil
 }
