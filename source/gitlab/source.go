@@ -21,7 +21,6 @@ type gitlabSource struct {
 	token    string
 	fullPath string
 	path     string
-	zipDir   string
 }
 
 func (s *gitlabSource) ModulePath() string {
@@ -112,7 +111,20 @@ func (s *gitlabSource) Zip(ctx context.Context, version string) (io.ReadCloser, 
 		return nil, fmt.Errorf("failed to get zipped archive data: %s", err)
 	}
 
-	// now need to repack archive content from <pkg-name>-<hash> → <full pkg name, such as gitlab.com/user/module>
+	// now need to repack archive content from <pkg-name>-<hash> → <full pkg name, such as gitlab.com/user/module>, e.g.
+	//
+	// > module-f5d5d62240829ba7f38614add00c4aba587cffb1:
+	// >   go.mod
+	// >   pkg.go
+	//
+	// from gitlab.com/user/module, where f5d5d62240829ba7f38614add00c4aba587cffb1 is a hash of the revision tagged
+	// v0.0.1 will be repacked into
+	//
+	// > gitlab.com:
+	// >    user.name:
+	// >        module@v0.1.2:
+	// >            go.mod
+	// >            pkg.go
 	zipped, err := ioutil.ReadAll(archive)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read out archive data: %s", err)

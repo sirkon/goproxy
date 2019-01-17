@@ -62,7 +62,7 @@ func (m middleware) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 			log.Printf("failed to write list response: %s", err)
 		}
 	case strings.HasSuffix(suffix, ".info"):
-		info, err := src.Stat(req.Context(), getVersion(suffix, 5))
+		info, err := src.Stat(req.Context(), getVersion(suffix))
 		if err != nil {
 			log.Print(err)
 			w.WriteHeader(http.StatusBadRequest)
@@ -83,17 +83,17 @@ func (m middleware) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 			log.Printf("failed to write go.mod response: %s", err)
 		}
 	case strings.HasSuffix(suffix, ".zip"):
-		arciveReader, err := src.Zip(req.Context(), getVersion(suffix))
+		archiveReader, err := src.Zip(req.Context(), getVersion(suffix))
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
 		defer func() {
-			if err := arciveReader.Close(); err != nil {
+			if err := archiveReader.Close(); err != nil {
 				log.Printf("failed to close zip archive reader for %s@%s: %s", path, getVersion(suffix), err)
 			}
 		}()
-		if _, err := io.Copy(w, arciveReader); err != nil {
+		if _, err := io.Copy(w, archiveReader); err != nil {
 			log.Printf("failed to write module version zip: %s", err)
 		}
 	default:
@@ -103,12 +103,8 @@ func (m middleware) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func getVersion(suffix string, offs ...int) string {
-	var offset int
-	if len(offs) > 0 {
-		offset = offs[0]
-	} else {
-		offset = 4
-	}
-	return suffix[:len(suffix)-offset]
+// getVersion we have something like v0.1.2.zip or v0.1.2.info or v0.1.2.zip in the suffix and need to cut the
+func getVersion(suffix string) string {
+	off := strings.LastIndex(suffix, ".")
+	return suffix[:off]
 }

@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"path/filepath"
 	"syscall"
 	"time"
 
@@ -57,7 +56,7 @@ func main() {
 	}
 
 	if len(gitlabHost) > 0 {
-		gl := gitlab.NewFactory(gitlabHost, true, filepath.Join(cacheDir, "zip-work"))
+		gl := gitlab.NewFactory(gitlabHost, true)
 		if err := r.AddRoute("gitlab", gl); err != nil {
 			log.Fatal(err)
 		}

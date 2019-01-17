@@ -11,23 +11,20 @@ import (
 // factory of sources for gitlab
 type factory struct {
 	client   Client
-	zipDir   string
 	needAuth bool
 }
 
 // NewFactory constructor
-func NewFactory(url string, needAuth bool, zipDir string) source.Factory {
+func NewFactory(url string, needAuth bool) source.Factory {
 	return &factory{
 		client:   NewClient(url, &http.Client{}),
-		zipDir:   zipDir,
 		needAuth: needAuth,
 	}
 }
 
 // NewFactoryGitlabClient constructor with given gitlab client
-func NewFactoryGitlabClient(needAuth bool, zipDir string, client Client) *factory {
+func NewFactoryGitlabClient(needAuth bool, client Client) *factory {
 	return &factory{
-		zipDir:   zipDir,
 		client:   client,
 		needAuth: needAuth,
 	}
@@ -59,7 +56,6 @@ func (f *factory) Source(req *http.Request, prefix string) (source.Source, error
 		fullPath: fullPath,
 		path:     path,
 		client:   f.client,
-		zipDir:   f.zipDir,
 	}, nil
 }
 
