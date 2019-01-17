@@ -1,4 +1,4 @@
-go# GoProxy middleware
+GoProxy middleware
 
 Middleware for go modules proxy, inspired by https://github.com/goproxyio/goproxy
 
