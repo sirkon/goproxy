@@ -63,7 +63,7 @@ func main() {
 		}
 	}
 
-	m := goproxy.Middleware(r)
+	m := goproxy.Middleware(r, "")
 
 	server := http.Server{
 		Addr:    listen,

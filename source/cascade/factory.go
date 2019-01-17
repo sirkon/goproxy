@@ -18,8 +18,8 @@ type factory struct {
 	url    string
 }
 
-func (f *factory) Source(req *http.Request) (source.Source, error) {
-	path, _, err := source.GetModInfo(req)
+func (f *factory) Source(req *http.Request, prefix string) (source.Source, error) {
+	path, _, err := source.GetModInfo(req, prefix)
 	if err != nil {
 		return nil, fmt.Errorf("%s invalid request: %s", req.URL, err)
 	}

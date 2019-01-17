@@ -13,9 +13,9 @@ var _ source.Factory = factory("")
 
 type factory string
 
-func (factory) Source(req *http.Request) (source.Source, error) { panic("implement me") }
-func (factory) Leave(source source.Source) error                { panic("implement me") }
-func (factory) Close() error                                    { panic("implement me") }
+func (factory) Source(req *http.Request, prefix string) (source.Source, error) { panic("implement me") }
+func (factory) Leave(source source.Source) error                               { panic("implement me") }
+func (factory) Close() error                                                   { panic("implement me") }
 
 func nodeLists(n *node) [][]string {
 	res := [][]string{}

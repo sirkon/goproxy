@@ -33,8 +33,8 @@ func NewFactoryGitlabClient(needAuth bool, zipDir string, client Client) *factor
 	}
 }
 
-func (f *factory) Source(req *http.Request) (source.Source, error) {
-	path, _, err := source.GetModInfo(req)
+func (f *factory) Source(req *http.Request, prefix string) (source.Source, error) {
+	path, _, err := source.GetModInfo(req, prefix)
 	if err != nil {
 		return nil, err
 	}

@@ -11,20 +11,24 @@ import (
 	"github.com/sirkon/goproxy/source"
 )
 
-// Middleware acts as go proxy with given router
-func Middleware(r *router.Router) http.Handler {
+// Middleware acts as go proxy with given router.
+//   transportPrefix is a head part of URL path which refers to address of go proxy before the module info. For example,
+// if we serving go proxy at https://0.0.0.0:8081/goproxy/..., transportPrefix will be "/goproxy"
+func Middleware(r *router.Router, transportPrefix string) http.Handler {
 	return middleware{
+		prefix: transportPrefix,
 		router: r,
 	}
 }
 
 // middleware
 type middleware struct {
+	prefix string
 	router *router.Router
 }
 
 func (m middleware) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	path, suffix, err := source.GetModInfo(req)
+	path, suffix, err := source.GetModInfo(req, m.prefix)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
@@ -38,7 +42,7 @@ func (m middleware) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	src, err := factory.Source(req)
+	src, err := factory.Source(req, "")
 	if err != nil {
 		log.Print(err)
 		w.WriteHeader(http.StatusBadRequest)
