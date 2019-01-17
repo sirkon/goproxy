@@ -12,6 +12,7 @@ import (
 type factory struct {
 	client   Client
 	needAuth bool
+	token    string
 }
 
 // NewFactory constructor
@@ -22,11 +23,29 @@ func NewFactory(url string, needAuth bool) source.Factory {
 	}
 }
 
+// NewFactoryToken constructor
+func NewFactoryToken(url, token string) source.Factory {
+	return &factory{
+		client:   NewClient(url, &http.Client{}),
+		token:    token,
+		needAuth: true,
+	}
+}
+
 // NewFactoryGitlabClient constructor with given gitlab client
-func NewFactoryGitlabClient(needAuth bool, client Client) *factory {
+func NewFactoryGitlabClient(needAuth bool, client Client) source.Factory {
 	return &factory{
 		client:   client,
 		needAuth: needAuth,
+	}
+}
+
+// NewFactoryGitlabTokenClient constructor with given gitlab client
+func NewFactoryGitlabTokenClient(token string, client Client) source.Factory {
+	return &factory{
+		client:   client,
+		token:    token,
+		needAuth: true,
 	}
 }
 
@@ -43,12 +62,14 @@ func (f *factory) Source(req *http.Request, prefix string) (source.Source, error
 	}
 
 	var token string
-	if f.needAuth {
+	if f.needAuth && len(f.token) == 0 {
 		var ok bool
 		token, _, ok = req.BasicAuth()
 		if !ok || len(token) == 0 {
 			return nil, fmt.Errorf("authorization required")
 		}
+	} else if f.needAuth {
+		token = f.token
 	}
 
 	return &gitlabSource{
