@@ -16,6 +16,15 @@ import (
 	"github.com/sirkon/goproxy/source"
 )
 
+func NewGitlabSource(client Client, token, fullPath, path string) source.Source {
+	return &gitlabSource{
+		client:   client,
+		token:    token,
+		fullPath: fullPath,
+		path:     path,
+	}
+}
+
 type gitlabSource struct {
 	client   Client
 	token    string
