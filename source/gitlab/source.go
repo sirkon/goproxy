@@ -57,7 +57,7 @@ func (s *gitlabSource) Versions(ctx context.Context, prefix string) ([]string, e
 		}
 	}
 	if len(resp) == 0 {
-		return nil, fmt.Errorf("invalid repository %s", s.path)
+		return nil, fmt.Errorf("invalid repository %s, not tags found", s.path)
 	}
 
 	return resp, nil

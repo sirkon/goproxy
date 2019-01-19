@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/sirkon/goproxy/internal/module"
 	"github.com/sirkon/goproxy/source/internal"
 )
 
@@ -25,6 +26,16 @@ func GetModInfo(req *http.Request, prefix string) (path string, suffix string, e
 	}
 
 	path = e.Module
+	path, err = module.DecodePath(path)
+	if err != nil {
+		return
+	}
+
 	suffix = e.Suffix
 	return
+}
+
+// PathEncoding returns go module encoded path
+func PathEncoding(path string) (string, error) {
+	return module.EncodePath(path)
 }
