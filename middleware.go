@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/rs/zerolog"
+
 	"github.com/sirkon/goproxy/router"
 	"github.com/sirkon/goproxy/source"
 )
@@ -14,10 +16,11 @@ import (
 // Middleware acts as go proxy with given router.
 //   transportPrefix is a head part of URL path which refers to address of go proxy before the module info. For example,
 // if we serving go proxy at https://0.0.0.0:8081/goproxy/..., transportPrefix will be "/goproxy"
-func Middleware(r *router.Router, transportPrefix string) http.Handler {
+func Middleware(r *router.Router, transportPrefix string, logger *zerolog.Logger) http.Handler {
 	return middleware{
 		prefix: transportPrefix,
 		router: r,
+		logger: logger,
 	}
 }
 
@@ -25,6 +28,7 @@ func Middleware(r *router.Router, transportPrefix string) http.Handler {
 type middleware struct {
 	prefix string
 	router *router.Router
+	logger *zerolog.Logger
 }
 
 func (m middleware) ServeHTTP(w http.ResponseWriter, req *http.Request) {
@@ -33,71 +37,91 @@ func (m middleware) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	log.Printf("requested for module %s, operation %s", path, suffix)
+	logger := m.logger.With().Timestamp().Str("request", req.URL.Path).Str("module", path)
 
 	factory := m.router.Factory(path)
 	if factory == nil {
-		log.Printf("no go proxy handlers registered for %s", path)
+		tmpLogger := logger.Logger()
+		(&tmpLogger).Error().Msgf("no proxy handlers registered for %s", path)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
 	src, err := factory.Source(req, "")
 	if err != nil {
-		log.Print(err)
+		tmpLogger := logger.Logger()
+		(&tmpLogger).Error().Err(err)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
 	switch {
 	case suffix == "list":
-		version, err := src.Versions(req.Context(), "")
+		tmpLogger := logger.Logger()
+		ctx := (&tmpLogger).WithContext(req.Context())
+		(&tmpLogger).Debug().Msg("version list requested")
+		version, err := src.Versions(ctx, "")
 		if err != nil {
-			log.Print(err)
+			zerolog.Ctx(ctx).Error().Err(err).Msg("failed to get version list")
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
 		w.WriteHeader(http.StatusOK)
 		if _, err := io.WriteString(w, strings.Join(version, "\n")); err != nil {
-			log.Printf("failed to write list response: %s", err)
+			zerolog.Ctx(ctx).Error().Err(err).Msg("failed to write list response")
 		}
 	case strings.HasSuffix(suffix, ".info"):
-		info, err := src.Stat(req.Context(), getVersion(suffix))
+		version := getVersion(suffix)
+		tmpLogger := logger.Str("version", version).Logger()
+		ctx := (&tmpLogger).WithContext(req.Context())
+		(&tmpLogger).Debug().Msg("version info requested")
+		info, err := src.Stat(ctx, version)
 		if err != nil {
-			log.Print(err)
+			zerolog.Ctx(ctx).Error().Err(err).Msg("failed to get revision info from source beneath")
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
 		je := json.NewEncoder(w)
 		if err := je.Encode(info); err != nil {
-			log.Printf("failed to write version info response: %s", err)
+			zerolog.Ctx(ctx).Error().Err(err).Msg("failed to write version info response")
 		}
 	case strings.HasSuffix(suffix, ".mod"):
-		gomod, err := src.GoMod(req.Context(), getVersion(suffix))
+		version := getVersion(suffix)
+		tmpLogger := logger.Str("version", version).Logger()
+		ctx := (&tmpLogger).WithContext(req.Context())
+		(&tmpLogger).Debug().Msg("go.mod requested")
+		gomod, err := src.GoMod(ctx, version)
 		if err != nil {
-			log.Print(err)
+			zerolog.Ctx(ctx).Error().Err(err).Msg("failed to get go.mod from a source beneath")
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
 		if _, err := w.Write(gomod); err != nil {
+			zerolog.Ctx(ctx).Error().Err(err).Msg("failed to return go.mod")
 			log.Printf("failed to write go.mod response: %s", err)
 		}
 	case strings.HasSuffix(suffix, ".zip"):
-		archiveReader, err := src.Zip(req.Context(), getVersion(suffix))
+		version := getVersion(suffix)
+		tmpLogger := logger.Str("version", version).Logger()
+		ctx := (&tmpLogger).WithContext(req.Context())
+		(&tmpLogger).Debug().Msg("zip archive requested")
+		archiveReader, err := src.Zip(ctx, version)
 		if err != nil {
+			zerolog.Ctx(ctx).Error().Err(err).Msg("failed to get zip archive")
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
 		defer func() {
 			if err := archiveReader.Close(); err != nil {
-				log.Printf("failed to close zip archive reader for %s@%s: %s", path, getVersion(suffix), err)
+				zerolog.Ctx(ctx).Error().Err(err).Msgf("failed to close zip reachive reader")
 			}
 		}()
 		if _, err := io.Copy(w, archiveReader); err != nil {
-			log.Printf("failed to write module version zip: %s", err)
+			zerolog.Ctx(ctx).Error().Err(err).Msg("failed to return zip archive")
 		}
 	default:
-		log.Printf("unsupported suffix %s in %s", suffix, req.URL)
+		tmpLogger := logger.Logger()
+		(&tmpLogger).Error().Msgf("unsupported suffix %s", suffix)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
