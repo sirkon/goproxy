@@ -6,12 +6,13 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
+
+	"github.com/rs/zerolog"
 
 	"github.com/sirkon/goproxy"
 	"github.com/sirkon/goproxy/router"
@@ -24,9 +25,8 @@ var cacheDir string
 var gitlabHost string
 
 func init() {
-	log.SetOutput(os.Stdout)
 	flag.StringVar(&cacheDir, "cache-dir", "", "go modules cache dir")
-	flag.StringVar(&gitlabHost, "gitlab", "", "gitlab host to get modules from")
+	flag.StringVar(&gitlabHost, "gitlab-api-url", "", "gitlab host to get modules from")
 	flag.StringVar(&listen, "listen", "0.0.0.0:8081", "service listen address")
 	flag.Parse()
 }
@@ -38,31 +38,57 @@ func main() {
 		os.Exit(1)
 	}
 
+	writer := zerolog.NewConsoleWriter()
+	writer.TimeFormat = time.RFC3339
+	writer.FormatMessage = func(i interface{}) string {
+		return fmt.Sprintf("\033[1m%v\033[0m", i)
+	}
+	writer.FormatTimestamp = func(i interface{}) string {
+		if i == nil {
+			return ""
+		}
+		return fmt.Sprintf("\033[2m%v\033[0m", i)
+	}
+	writer.FormatFieldName = func(i interface{}) string {
+		return fmt.Sprintf("\033[35m%s\033[0m", i)
+	}
+	writer.FormatFieldValue = func(i interface{}) string {
+		return fmt.Sprintf("[%v]", i)
+	}
+	writer.FormatErrFieldName = func(i interface{}) string {
+		return fmt.Sprintf("\033[31m%s\033[0m", i)
+	}
+	writer.FormatErrFieldValue =
+		func(i interface{}) string {
+			return fmt.Sprintf("\033[31m[%v]\033[0m", i)
+		}
+	log := zerolog.New(writer).Level(zerolog.DebugLevel)
+
 	errCh := make(chan error)
 
-	log.Printf("goproxy: %s inited. listen on %s\n", time.Now().Format("2006-01-02 15:04:05"), listen)
+	log.Info().Timestamp().Str("listen", listen).Msg("start listening")
 
 	r, err := router.NewRouter()
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal().Err(err)
 	}
 
 	legacy, err := vcs.NewPlugin(cacheDir)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal().Err(err).Msg("exitting")
 	}
 	if err := r.AddRoute("", legacy); err != nil {
-		log.Fatal(err)
+		log.Fatal().Err(err).Msg("exitting")
 	}
 
 	if len(gitlabHost) > 0 {
 		gl := gitlab.NewPlugin(gitlabHost, true)
 		if err := r.AddRoute("gitlab", gl); err != nil {
-			log.Fatal(err)
+			log.Fatal().Err(err).Msg("exitting")
 		}
 	}
 
-	m := goproxy.Middleware(r, "")
+	m := goproxy.Middleware(r, "", &log)
 
 	server := http.Server{
 		Addr:    listen,
@@ -81,11 +107,11 @@ func main() {
 
 	select {
 	case err := <-errCh:
-		log.Fatal(err)
+		log.Fatal().Timestamp().Err(err).Msg("exitting")
 	case sign := <-signCh:
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 		_ = server.Shutdown(ctx)
-		log.Printf("goproxy: Server gracefully %s", sign)
+		log.Info().Timestamp().Str("signal", sign.String()).Msg("server stopped on signal")
 	}
 }

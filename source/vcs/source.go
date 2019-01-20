@@ -4,8 +4,9 @@ import (
 	"context"
 	"io"
 	"io/ioutil"
-	"log"
 	"os"
+
+	"github.com/rs/zerolog"
 
 	"github.com/sirkon/goproxy/internal/modfetch"
 	"github.com/sirkon/goproxy/source"
@@ -115,11 +116,11 @@ func (s *vscSource) Zip(ctx context.Context, version string) (file io.ReadCloser
 	go func() {
 		dir, err := ioutil.TempDir(".", ".downloads")
 		if err != nil {
-			log.Printf("failed to create temporary directory: %s", err)
+			zerolog.Ctx(ctx).Error().Err(err).Msg("failed to create temporary directory")
 		}
 		defer func() {
 			if err := os.RemoveAll(dir); err != nil {
-				log.Printf("failed to remove temporary directory: %s", err)
+				zerolog.Ctx(ctx).Error().Err(err).Msg("failed to remove temporary directory")
 			}
 		}()
 		fileName, err := s.repo.Zip(version, dir)

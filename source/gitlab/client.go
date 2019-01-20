@@ -7,9 +7,10 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"net/url"
+
+	"github.com/rs/zerolog"
 )
 
 // Client implements access for gitlab functions needed
@@ -104,18 +105,14 @@ func (c *gitlabClient) Archive(ctx context.Context, project, tag, token string) 
 }
 
 func (c *gitlabClient) makeRequest(ctx context.Context, urlValue string, token string, keys map[string]string) (resp *http.Response, err error) {
-	v := url.Values{}
-	v.Set("private_token", token)
-	for key, value := range keys {
-		v.Set(key, value)
-	}
 
-	requestURL := c.url + urlValue + "?" + v.Encode()
-	log.Println("requesting", requestURL)
+	requestURL := c.url + urlValue
+	zerolog.Ctx(ctx).Debug().Timestamp().Str("gitlab-url", requestURL).Msg("gitlab remote request")
 	req, err := http.NewRequest(http.MethodGet, requestURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate request: %s", err)
 	}
+	req.Header.Set("PRIVATE-TOKEN", token)
 	req = req.WithContext(ctx)
 	resp, err = c.client.Do(req)
 	if err != nil {
