@@ -47,7 +47,7 @@ func (m middleware) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	src, err := factory.Source(req, "")
+	src, err := factory.Source(req, m.prefix)
 	if err != nil {
 		tmpLogger := logger.Logger()
 		(&tmpLogger).Error().Err(err)
