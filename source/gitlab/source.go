@@ -9,21 +9,14 @@ import (
 	"io"
 	"io/ioutil"
 	"strconv"
-	"strings"
 	"time"
 
+	"github.com/rs/zerolog"
+
+	"github.com/sirkon/goproxy/fsrepack"
 	"github.com/sirkon/goproxy/internal/semver"
 	"github.com/sirkon/goproxy/source"
 )
-
-func NewGitlabSource(client Client, token, fullPath, path string) source.Source {
-	return &gitlabSource{
-		client:   client,
-		token:    token,
-		fullPath: fullPath,
-		path:     path,
-	}
-}
 
 type gitlabSource struct {
 	client   Client
@@ -120,6 +113,13 @@ func (s *gitlabSource) Zip(ctx context.Context, version string) (io.ReadCloser, 
 		return nil, fmt.Errorf("failed to get zipped archive data: %s", err)
 	}
 
+	var me majorExtractor
+	if ok, _ := me.extract(version); !ok {
+		zerolog.Ctx(ctx).Error().Timestamp().Str("module", s.path).Msgf("invalid version %s", version)
+		return nil, fmt.Errorf("invalid version %s", version)
+	}
+	repacker := fsrepack.Gitlab(s.fullPath, me.Major)
+
 	// now need to repack archive content from <pkg-name>-<hash> → <full pkg name, such as gitlab.com/user/module>, e.g.
 	//
 	// > module-f5d5d62240829ba7f38614add00c4aba587cffb1:
@@ -154,9 +154,11 @@ func (s *gitlabSource) Zip(ctx context.Context, version string) (io.ReadCloser, 
 	}
 
 	for _, file := range zipReader.File {
-		pathChunks := strings.Split(file.Name, "/")
-		pathChunks[0] = s.fullPath + "@" + version
-		fileName := strings.Join(pathChunks, "/")
+		tmp, err := repacker.Relativer(file.Name)
+		if err != nil {
+			return nil, fmt.Errorf("failed to repack: %s", err)
+		}
+		fileName := repacker.Destinator(tmp)
 
 		isDir := file.FileInfo().IsDir()
 
