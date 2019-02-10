@@ -113,12 +113,10 @@ func (s *gitlabSource) Zip(ctx context.Context, version string) (io.ReadCloser, 
 		return nil, fmt.Errorf("failed to get zipped archive data: %s", err)
 	}
 
-	var me majorExtractor
-	if ok, _ := me.extract(version); !ok {
-		zerolog.Ctx(ctx).Error().Timestamp().Str("module", s.path).Msgf("invalid version %s", version)
-		return nil, fmt.Errorf("invalid version %s", version)
+	repacker, err := fsrepack.Gitlab(s.fullPath, version)
+	if err != nil {
+		return nil, err
 	}
-	repacker := fsrepack.Gitlab(s.fullPath, me.Major)
 
 	// now need to repack archive content from <pkg-name>-<hash> → <full pkg name, such as gitlab.com/user/module>, e.g.
 	//
@@ -171,7 +169,10 @@ func (s *gitlabSource) Zip(ctx context.Context, version string) (io.ReadCloser, 
 		}
 
 		if isDir {
+			zerolog.Ctx(ctx).Info().Msgf("tmp is %s, dir name is %s", tmp, fileName)
 			continue
+		} else {
+			zerolog.Ctx(ctx).Info().Msgf("tmp is %s, file name is %s", tmp, fileName)
 		}
 
 		fileData, err := file.Open()

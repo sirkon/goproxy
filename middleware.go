@@ -34,9 +34,11 @@ type middleware struct {
 func (m middleware) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	path, suffix, err := source.GetModInfo(req, m.prefix)
 	if err != nil {
+		m.logger.Error().Err(err).Str("prefix", m.prefix).Msg("failed to get a response")
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
+
 	logger := m.logger.With().Timestamp().Str("request", req.URL.Path).Str("module", path)
 
 	factory := m.router.Factory(path)
