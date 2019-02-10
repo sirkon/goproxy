@@ -105,15 +105,19 @@ func (c *gitlabClient) Archive(ctx context.Context, project, tag, token string) 
 }
 
 func (c *gitlabClient) makeRequest(ctx context.Context, urlValue string, token string, keys map[string]string) (resp *http.Response, err error) {
-
 	requestURL := c.url + urlValue
-	zerolog.Ctx(ctx).Debug().Timestamp().Str("gitlab-url", requestURL).Msg("gitlab remote request")
 	req, err := http.NewRequest(http.MethodGet, requestURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate request: %s", err)
 	}
+	q := req.URL.Query()
+	for key, value := range keys {
+		q.Set(key, value)
+	}
+	req.URL.RawQuery = q.Encode()
 	req.Header.Set("PRIVATE-TOKEN", token)
 	req = req.WithContext(ctx)
+	zerolog.Ctx(ctx).Debug().Timestamp().Str("gitlab-url", req.URL.RawPath).Msg("gitlab remote request")
 	resp, err = c.client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get response: %s", err)
@@ -121,7 +125,7 @@ func (c *gitlabClient) makeRequest(ctx context.Context, urlValue string, token s
 	if resp.StatusCode != http.StatusOK {
 		defer resp.Body.Close()
 		res, _ := ioutil.ReadAll(resp.Body)
-		return nil, fmt.Errorf("error response (Status Code %d, body %s)", resp.StatusCode, string(res))
+		return nil, fmt.Errorf("error response (status code %d, body %s)", resp.StatusCode, string(res))
 	}
 	return resp, nil
 }

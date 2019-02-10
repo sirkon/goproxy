@@ -63,7 +63,7 @@ func parseMetaGoImports(r io.Reader, mod ModuleMode) (imports []metaImport, err 
 		}
 	}
 
-	// Extract mod entries if we are paying attention to them.
+	// extract mod entries if we are paying attention to them.
 	var list []metaImport
 	var have map[string]bool
 	if mod == PreferMod {

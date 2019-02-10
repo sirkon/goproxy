@@ -35,8 +35,8 @@
 package modfetch
 
 import (
-	"github.com/sirkon/goproxy/internal/semver"
 	"fmt"
+	"github.com/sirkon/goproxy/internal/semver"
 	"regexp"
 	"strings"
 	"time"
@@ -61,7 +61,7 @@ func PseudoVersion(major, older string, t time.Time, rev string) string {
 	}
 
 	// Form (2), (3).
-	// Extract patch from vMAJOR.MINOR.PATCH
+	// extract patch from vMAJOR.MINOR.PATCH
 	v := older[:len(older)]
 	i := strings.LastIndex(v, ".") + 1
 	v, patch := v[:i], v[i:]

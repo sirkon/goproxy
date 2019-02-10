@@ -29,8 +29,8 @@ import (
 	"github.com/sirkon/goproxy/internal/load"
 	"github.com/sirkon/goproxy/internal/modload"
 	"github.com/sirkon/goproxy/internal/str"
-	"github.com/sirkon/goproxy/internal/work"
 	"github.com/sirkon/goproxy/internal/test2json"
+	"github.com/sirkon/goproxy/internal/work"
 )
 
 // Break init loop.
@@ -1581,7 +1581,7 @@ func coveragePercentage(out []byte) string {
 	}
 	// The string looks like
 	//	test coverage for encoding/binary: 79.9% of statements
-	// Extract the piece from the percentage to the end of the line.
+	// extract the piece from the percentage to the end of the line.
 	re := regexp.MustCompile(`coverage: (.*)\n`)
 	matches := re.FindSubmatch(out)
 	if matches == nil {

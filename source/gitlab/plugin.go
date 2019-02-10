@@ -49,6 +49,14 @@ func NewPluginGitlabTokenClient(token string, client Client) source.Plugin {
 	}
 }
 
+func getGitlabPath(fullPath string) string {
+	pos := strings.IndexByte(fullPath, '/')
+	if pos >= 0 {
+		return fullPath[pos+1:]
+	}
+	return fullPath
+}
+
 func (f *plugin) Source(req *http.Request, prefix string) (source.Source, error) {
 	path, _, err := source.GetModInfo(req, prefix)
 	if err != nil {
@@ -56,10 +64,7 @@ func (f *plugin) Source(req *http.Request, prefix string) (source.Source, error)
 	}
 	// url prefix (gitlab.XXXX, etc) is not needed for gitlab projects
 	fullPath := path
-	pos := strings.IndexByte(path, '/')
-	if pos >= 0 {
-		path = path[pos+1:]
-	}
+	path = getGitlabPath(fullPath)
 
 	var token string
 	if f.needAuth && len(f.token) == 0 {
@@ -72,12 +77,46 @@ func (f *plugin) Source(req *http.Request, prefix string) (source.Source, error)
 		token = f.token
 	}
 
-	return &gitlabSource{
+	s1 := &gitlabSource{
 		token:    token,
 		fullPath: fullPath,
 		path:     path,
 		client:   f.client,
+	}
+
+	// cut the tail and see if it denounces version suffix (vXYZ)
+	pos := strings.LastIndexByte(fullPath, '/')
+	if pos < 0 {
+		return overlapGitlabSource{
+			sources: []source.Source{s1},
+			version: 0,
+		}, nil
+	}
+
+	tail := fullPath[pos+1:]
+	var ve pathVersionExtractor
+	if ok, _ := ve.Extract(tail); !ok {
+		return overlapGitlabSource{
+			sources: []source.Source{s1},
+			version: 0,
+		}, nil
+	}
+
+	fullPath = fullPath[:pos]
+	path = getGitlabPath(fullPath)
+
+	s2 := &gitlabSource{
+		token:    token,
+		fullPath: fullPath,
+		path:     path,
+		client:   f.client,
+	}
+
+	return overlapGitlabSource{
+		sources: []source.Source{s1, s2},
+		version: ve.Version,
 	}, nil
+
 }
 
 func (f *plugin) Leave(source source.Source) error {
