@@ -5,47 +5,49 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/sirkon/gitlab"
+
 	"github.com/sirkon/goproxy/source"
 )
 
 // plugin of sources for gitlab
 type plugin struct {
-	client   Client
-	needAuth bool
-	token    string
+	apiAccess gitlab.APIAccess
+	needAuth  bool
+	token     string
 }
 
 // NewPlugin constructor
-func NewPlugin(url string, needAuth bool) source.Plugin {
+func NewPlugin(access gitlab.APIAccess, needAuth bool) source.Plugin {
 	return &plugin{
-		client:   NewClient(url, &http.Client{}),
-		needAuth: needAuth,
+		apiAccess: access,
+		needAuth:  needAuth,
 	}
 }
 
 // NewPluginToken constructor
-func NewPluginToken(url, token string) source.Plugin {
+func NewPluginToken(access gitlab.APIAccess, token string) source.Plugin {
 	return &plugin{
-		client:   NewClient(url, &http.Client{}),
-		token:    token,
-		needAuth: true,
+		apiAccess: access,
+		token:     token,
+		needAuth:  true,
 	}
 }
 
-// NewPluginGitlabClient constructor with given gitlab client
-func NewPluginGitlabClient(needAuth bool, client Client) source.Plugin {
+// NewPluginGitlabClient constructor with given gitlab apiAccess
+func NewPluginGitlabClient(needAuth bool, access gitlab.APIAccess) source.Plugin {
 	return &plugin{
-		client:   client,
-		needAuth: needAuth,
+		apiAccess: access,
+		needAuth:  needAuth,
 	}
 }
 
-// NewPluginGitlabTokenClient constructor with given gitlab client
-func NewPluginGitlabTokenClient(token string, client Client) source.Plugin {
+// NewPluginGitlabTokenClient constructor with given gitlab apiAccess
+func NewPluginGitlabTokenClient(token string, access gitlab.APIAccess) source.Plugin {
 	return &plugin{
-		client:   client,
-		token:    token,
-		needAuth: true,
+		apiAccess: access,
+		token:     token,
+		needAuth:  true,
 	}
 }
 
@@ -78,10 +80,9 @@ func (f *plugin) Source(req *http.Request, prefix string) (source.Source, error)
 	}
 
 	s1 := &gitlabSource{
-		token:    token,
 		fullPath: fullPath,
 		path:     path,
-		client:   f.client,
+		client:   f.apiAccess.Client(token),
 	}
 
 	// cut the tail and see if it denounces version suffix (vXYZ)
@@ -106,10 +107,9 @@ func (f *plugin) Source(req *http.Request, prefix string) (source.Source, error)
 	path = getGitlabPath(fullPath)
 
 	s2 := &gitlabSource{
-		token:    token,
 		fullPath: fullPath,
 		path:     path,
-		client:   f.client,
+		client:   f.apiAccess.Client(token),
 	}
 
 	return overlapGitlabSource{

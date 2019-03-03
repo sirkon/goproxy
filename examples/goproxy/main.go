@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/rs/zerolog"
+	gitlab2 "github.com/sirkon/gitlab"
 
 	"github.com/sirkon/goproxy"
 	"github.com/sirkon/goproxy/router"
@@ -22,11 +23,11 @@ import (
 
 var listen string
 var cacheDir string
-var gitlabHost string
+var gitlabAPIURL string
 
 func init() {
 	flag.StringVar(&cacheDir, "cache-dir", "", "go modules cache dir")
-	flag.StringVar(&gitlabHost, "gitlab-api-url", "", "gitlab host to get modules from")
+	flag.StringVar(&gitlabAPIURL, "gitlab-api-url", "", "gitlab host to get modules from")
 	flag.StringVar(&listen, "listen", "0.0.0.0:8081", "service listen address")
 	flag.Parse()
 }
@@ -81,8 +82,8 @@ func main() {
 		log.Fatal().Err(err).Msg("exitting")
 	}
 
-	if len(gitlabHost) > 0 {
-		gl := gitlab.NewPlugin(gitlabHost, true)
+	if len(gitlabAPIURL) > 0 {
+		gl := gitlab.NewPlugin(gitlab2.NewAPIAccess(nil, gitlabAPIURL), true)
 		if err := r.AddRoute("gitlab", gl); err != nil {
 			log.Fatal().Err(err).Msg("exitting")
 		}

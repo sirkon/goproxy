@@ -4,14 +4,12 @@ import (
 	"archive/zip"
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
-	"strconv"
-	"time"
 
 	"github.com/rs/zerolog"
+	"github.com/sirkon/gitlab"
 
 	"github.com/sirkon/goproxy/fsrepack"
 	"github.com/sirkon/goproxy/internal/semver"
@@ -19,8 +17,7 @@ import (
 )
 
 type gitlabSource struct {
-	client   Client
-	token    string
+	client   gitlab.Client
 	fullPath string
 	path     string
 }
@@ -30,21 +27,13 @@ func (s *gitlabSource) ModulePath() string {
 }
 
 func (s *gitlabSource) Versions(ctx context.Context, prefix string) ([]string, error) {
-	data, err := s.client.Tags(ctx, s.path, "", s.token)
+	tags, err := s.client.Tags(ctx, s.path, "")
 	if err != nil {
 		return nil, fmt.Errorf("failed to get tags from gitlab repository: %s", err)
 	}
 
-	type versionInfo struct {
-		Name string `json:"name"`
-	}
-	var dest []versionInfo
-	if err := json.Unmarshal(data, &dest); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %s", err)
-	}
-
 	var resp []string
-	for _, tag := range dest {
+	for _, tag := range tags {
 		if semver.IsValid(tag.Name) {
 			resp = append(resp, tag.Name)
 		}
@@ -57,37 +46,28 @@ func (s *gitlabSource) Versions(ctx context.Context, prefix string) ([]string, e
 }
 
 func (s *gitlabSource) Stat(ctx context.Context, rev string) (*source.RevInfo, error) {
-	data, err := s.client.Tags(ctx, s.path, rev, s.token)
+	tags, err := s.client.Tags(ctx, s.path, rev)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get tag %s from gitlab repository: %s", rev, err)
+		return nil, fmt.Errorf("failed to get tags from gitlab repository: %s", err)
 	}
 
-	var dest struct {
-		Name   string `json:"name"`
-		Commit struct {
-			ID        string `json:"id"`
-			ShortID   string `json:"short_id"`
-			CreatedAt string `json:"created_at"`
-		} `json:"commit"`
-	}
-	if err := json.Unmarshal(data, &dest); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal tag %s info: %s", rev, err)
-	}
-	createdAt, err := time.Parse(time.RFC3339Nano, dest.Commit.CreatedAt)
-	if err != nil {
-		return nil, fmt.Errorf("invalid time format in tag response `%s`: %s", dest.Commit.CreatedAt, err)
+	// Looking for exact revision match
+	for _, tag := range tags {
+		if tag.Name == rev {
+			return &source.RevInfo{
+				Version: tag.Name,
+				Time:    *tag.Commit.CreatedAt,
+				Name:    tag.Commit.ID,
+				Short:   tag.Commit.ShortID,
+			}, nil
+		}
 	}
 
-	return &source.RevInfo{
-		Version: dest.Name,
-		Time:    createdAt,
-		Name:    dest.Commit.ID,
-		Short:   dest.Commit.ShortID,
-	}, nil
+	return nil, fmt.Errorf("state: unknown revision %s for %s", rev, s.path)
 }
 
 func (s *gitlabSource) GoMod(ctx context.Context, version string) (data []byte, err error) {
-	return s.client.GoMod(ctx, s.path, version, s.token)
+	return s.client.File(ctx, s.path, "go.mod", version)
 }
 
 type bufferCloser struct {
@@ -98,17 +78,12 @@ type bufferCloser struct {
 func (*bufferCloser) Close() error { return nil }
 
 func (s *gitlabSource) Zip(ctx context.Context, version string) (io.ReadCloser, error) {
-	modInfo, err := s.client.ModuleInfo(ctx, s.path, s.token)
+	modInfo, err := s.client.ProjectInfo(ctx, s.path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get project %s info: %s", s.path, err)
 	}
 
-	var prjInfo projectInfo
-	if err := json.Unmarshal(modInfo, &prjInfo); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal project %s info data: %s", s.path, err)
-	}
-
-	archive, err := s.client.Archive(ctx, strconv.Itoa(prjInfo.ID), version, s.token)
+	archive, err := s.client.Archive(ctx, modInfo.ID, version)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get zipped archive data: %s", err)
 	}
