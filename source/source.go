@@ -3,13 +3,12 @@ package source
 import (
 	"context"
 	"io"
-	"time"
 )
 
 // RevInfo describes a single revision in a module repository.
 type RevInfo struct {
-	Version string    // version string
-	Time    time.Time // commit time
+	Version string // version string
+	Time    string // commit time
 
 	// These fields are used for Stat of arbitrary rev,
 	// but they are not recorded when talking about module versions.

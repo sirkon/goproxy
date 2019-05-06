@@ -5,6 +5,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"time"
 
 	"github.com/rs/zerolog"
 
@@ -68,7 +69,7 @@ func (s *vscSource) Stat(ctx context.Context, rev string) (*source.RevInfo, erro
 		res := &source.RevInfo{}
 		res.Name = raw.Name
 		res.Short = raw.Short
-		res.Time = raw.Time
+		res.Time = raw.Time.Format(time.RFC3339)
 		res.Version = raw.Version
 		dataChan <- data{
 			info: res,

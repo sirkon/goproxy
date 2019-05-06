@@ -8,7 +8,6 @@ import (
 	"io"
 	"io/ioutil"
 
-	"github.com/rs/zerolog"
 	"github.com/sirkon/gitlab"
 
 	"github.com/sirkon/goproxy/fsrepack"
@@ -56,7 +55,7 @@ func (s *gitlabSource) Stat(ctx context.Context, rev string) (*source.RevInfo, e
 		if tag.Name == rev {
 			return &source.RevInfo{
 				Version: tag.Name,
-				Time:    *tag.Commit.CreatedAt,
+				Time:    tag.Commit.CreatedAt,
 				Name:    tag.Commit.ID,
 				Short:   tag.Commit.ShortID,
 			}, nil
@@ -144,10 +143,7 @@ func (s *gitlabSource) Zip(ctx context.Context, version string) (io.ReadCloser, 
 		}
 
 		if isDir {
-			zerolog.Ctx(ctx).Info().Msgf("tmp is %s, dir name is %s", tmp, fileName)
 			continue
-		} else {
-			zerolog.Ctx(ctx).Info().Msgf("tmp is %s, file name is %s", tmp, fileName)
 		}
 
 		fileData, err := file.Open()
