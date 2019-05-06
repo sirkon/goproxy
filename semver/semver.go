@@ -15,9 +15,9 @@ func IsValid(sample string) bool {
 func Major(sample string) int {
 	lit := semver.Major(sample)
 	if len(lit) == 0 {
-		return 0
+		return -1
 	}
-		res, err := strconv.Atoi(lit)
+	res, err := strconv.Atoi(lit[1:])
 	if err != nil {
 		return -1
 	}
