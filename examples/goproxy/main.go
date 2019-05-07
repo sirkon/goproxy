@@ -67,7 +67,7 @@ func main() {
 
 	errCh := make(chan error)
 
-	log.Info().Timestamp().Str("listen", listen).Msg("start listening")
+	log.Info().Str("listen", listen).Msg("start listening")
 
 	r, err := router.NewRouter()
 	if err != nil {
@@ -108,11 +108,11 @@ func main() {
 
 	select {
 	case err := <-errCh:
-		log.Fatal().Timestamp().Err(err).Msg("exitting")
+		log.Fatal().Err(err).Msg("exitting")
 	case sign := <-signCh:
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 		_ = server.Shutdown(ctx)
-		log.Info().Timestamp().Str("signal", sign.String()).Msg("server stopped on signal")
+		log.Info().Str("signal", sign.String()).Msg("server stopped on signal")
 	}
 }

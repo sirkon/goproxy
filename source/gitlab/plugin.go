@@ -17,6 +17,10 @@ type plugin struct {
 	token     string
 }
 
+func (f *plugin) String() string {
+	return "gitlab"
+}
+
 // NewPlugin constructor
 func NewPlugin(access gitlab.APIAccess, needAuth bool) source.Plugin {
 	return &plugin{

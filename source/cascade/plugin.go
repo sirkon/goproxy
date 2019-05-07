@@ -18,6 +18,10 @@ type plugin struct {
 	url    string
 }
 
+func (f *plugin) String() string {
+	return "cascade"
+}
+
 func (f *plugin) Source(req *http.Request, prefix string) (source.Source, error) {
 	path, _, err := source.GetModInfo(req, prefix)
 	if err != nil {

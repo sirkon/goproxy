@@ -19,6 +19,10 @@ type plugin struct {
 	inWork     map[string]modfetch.Repo
 }
 
+func (f *plugin) String() string {
+	return "legacy"
+}
+
 // NewPlugin creates new valid plugin instance
 func NewPlugin(rootDir string) (f source.Plugin, err error) {
 	setupEnv(rootDir)

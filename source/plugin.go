@@ -9,4 +9,5 @@ type Plugin interface {
 	Source(req *http.Request, prefix string) (Source, error)
 	Leave(source Source) error
 	Close() error
+	String() string
 }
