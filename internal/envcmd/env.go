@@ -27,13 +27,13 @@ var CmdEnv = &base.Command{
 	Long: `
 Env prints Go environment information.
 
-By default env prints information as a shell script
+By default env prints information as a shell cache
 (on Windows, a batch file). If one or more variable
 names is given as arguments, env prints the value of
 each named variable on its own line.
 
 The -json flag prints the environment in JSON format
-instead of as a shell script.
+instead of as a shell cache.
 
 For more about environment variables, see 'go help environment'.
 	`,
