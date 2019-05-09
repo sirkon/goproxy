@@ -38,29 +38,28 @@ func (m middleware) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	logger := m.logger.With().Str("request", req.URL.Path).Str("module", path)
+	logger := m.logger.With().Str("request", req.URL.Path).Str("module", path).Logger()
 
 	factory := m.router.Factory(path)
 	if factory == nil {
-		tmpLogger := logger.Logger()
-		(&tmpLogger).Error().Msgf("no proxy handlers registered for %s", path)
+		logger.Error().Msgf("no plugin registered for %s", path)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
+	logger = logger.With().Str("plugin", factory.String()).Logger()
+
 	src, err := factory.Source(req, m.prefix)
 	if err != nil {
-		tmpLogger := logger.Logger()
-		(&tmpLogger).Error().Err(err).Msgf("failed to get a source from plugin %s", factory)
+		logger.Error().Err(err).Msg("failed to get a source from plugin")
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
 	switch {
 	case suffix == "list":
-		tmpLogger := logger.Logger()
-		ctx := (&tmpLogger).WithContext(req.Context())
-		(&tmpLogger).Debug().Msg("version list requested")
+		ctx := logger.WithContext(req.Context())
+		logger.Debug().Msg("version list requested")
 		version, err := src.Versions(ctx, "")
 		if err != nil {
 			zerolog.Ctx(ctx).Error().Err(err).Msg("failed to get version list")
@@ -73,9 +72,9 @@ func (m middleware) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		}
 	case strings.HasSuffix(suffix, ".info"):
 		version := getVersion(suffix)
-		tmpLogger := logger.Str("version", version).Logger()
-		ctx := (&tmpLogger).WithContext(req.Context())
-		(&tmpLogger).Debug().Msg("version info requested")
+		tmpLogger := logger.With().Str("version", version).Logger()
+		ctx := tmpLogger.WithContext(req.Context())
+		tmpLogger.Debug().Msg("version info requested")
 		info, err := src.Stat(ctx, version)
 		if err != nil {
 			zerolog.Ctx(ctx).Error().Err(err).Msg("failed to get revision info from source beneath")
@@ -88,9 +87,9 @@ func (m middleware) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		}
 	case strings.HasSuffix(suffix, ".mod"):
 		version := getVersion(suffix)
-		tmpLogger := logger.Str("version", version).Logger()
-		ctx := (&tmpLogger).WithContext(req.Context())
-		(&tmpLogger).Debug().Msg("go.mod requested")
+		tmpLogger := logger.With().Str("version", version).Logger()
+		ctx := tmpLogger.WithContext(req.Context())
+		tmpLogger.Debug().Msg("go.mod requested")
 		gomod, err := src.GoMod(ctx, version)
 		if err != nil {
 			zerolog.Ctx(ctx).Error().Err(err).Msg("failed to get go.mod from a source beneath")
@@ -103,9 +102,9 @@ func (m middleware) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		}
 	case strings.HasSuffix(suffix, ".zip"):
 		version := getVersion(suffix)
-		tmpLogger := logger.Str("version", version).Logger()
-		ctx := (&tmpLogger).WithContext(req.Context())
-		(&tmpLogger).Debug().Msg("zip archive requested")
+		tmpLogger := logger.With().Str("version", version).Logger()
+		ctx := tmpLogger.WithContext(req.Context())
+		tmpLogger.Debug().Msg("zip archive requested")
 		archiveReader, err := src.Zip(ctx, version)
 		if err != nil {
 			zerolog.Ctx(ctx).Error().Err(err).Msg("failed to get zip archive")
@@ -121,8 +120,7 @@ func (m middleware) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 			zerolog.Ctx(ctx).Error().Err(err).Msg("failed to return zip archive")
 		}
 	default:
-		tmpLogger := logger.Logger()
-		(&tmpLogger).Error().Msgf("unsupported suffix %s", suffix)
+		logger.Error().Msgf("unsupported suffix %s", suffix)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
