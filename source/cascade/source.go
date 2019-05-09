@@ -75,7 +75,6 @@ func (s *cascadeSource) Zip(ctx context.Context, version string) (file io.ReadCl
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
 
 	return resp.Body, nil
 }
