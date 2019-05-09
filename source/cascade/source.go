@@ -36,7 +36,14 @@ func (s *cascadeSource) Versions(ctx context.Context, prefix string) (tags []str
 		return nil, fmt.Errorf("failed to read out list request: %s", err)
 	}
 
-	return strings.Split(string(data), "\n"), nil
+	var res []string
+	for _, version := range strings.Split(string(data), "\n") {
+		version = strings.TrimSpace(version)
+		if len(version) > 0 {
+			res = append(res, version)
+		}
+	}
+	return res, nil
 }
 
 func (s *cascadeSource) Stat(ctx context.Context, rev string) (*source.RevInfo, error) {
