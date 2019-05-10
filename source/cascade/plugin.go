@@ -28,11 +28,18 @@ func (f *plugin) Source(req *http.Request, prefix string) (source.Source, error)
 		return nil, fmt.Errorf("%s invalid request: %s", req.URL, err)
 	}
 
-	return &cascadeSource{
+	res := &cascadeSource{
 		mod:    path,
 		url:    f.url,
 		client: f.client,
-	}, nil
+	}
+	if user, pass, ok := req.BasicAuth(); ok {
+		res.basicAuth.ok = true
+		res.basicAuth.user = user
+		res.basicAuth.password = pass
+	}
+
+	return res, nil
 }
 
 func (f *plugin) Leave(source source.Source) error {

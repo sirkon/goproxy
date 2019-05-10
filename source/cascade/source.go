@@ -15,9 +15,14 @@ import (
 var _ source.Source = &cascadeSource{}
 
 type cascadeSource struct {
-	mod    string
-	url    string
-	client *http.Client
+	mod       string
+	url       string
+	client    *http.Client
+	basicAuth struct {
+		ok       bool
+		user     string
+		password string
+	}
 }
 
 func (s *cascadeSource) ModulePath() string {
@@ -91,8 +96,11 @@ func (s *cascadeSource) makeRequest(ctx context.Context, url string) (*http.Resp
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate request on %s: %s", url, err)
 	}
-
+	if s.basicAuth.ok {
+		req.SetBasicAuth(s.basicAuth.user, s.basicAuth.password)
+	}
 	req = req.WithContext(ctx)
+
 	resp, err := s.client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get response from %s: %s", url, err)
