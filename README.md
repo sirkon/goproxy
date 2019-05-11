@@ -11,11 +11,11 @@ How to set up a middleware:
     ```
 2. Add needed handlers via
     ```go
-    err := r.AddRoute(proxyFactory)
+    err := r.AddRoute(plugin)
     ```
     for example:
     ```go
-    regular, err := vcs.NewFactory(cacheDir)
+    regular, err := vcs.NewPlugin(cacheDir)
     if err != nil {
         log.Fatal(err)
     }
