@@ -9,13 +9,19 @@ import (
 
 // NewPlugin plugin returning source pointing to another proxy
 func NewPlugin(url string) goproxy.Plugin {
-	return &plugin{url: url, client: &http.Client{}}
+	return &plugin{url: url, client: &http.Client{}, passCreds: nil}
+}
+
+// NewPluginPassCreds this gets a function deciding is it worth to pass BasicAuth further
+func NewPluginPassCreds(url string, passCreds func(r *http.Request) bool) goproxy.Plugin {
+	return &plugin{url: url, client: &http.Client{}, passCreds: passCreds}
 }
 
 // plugin of sources for another go proxy
 type plugin struct {
-	client *http.Client
-	url    string
+	client    *http.Client
+	url       string
+	passCreds func(req *http.Request) bool
 }
 
 func (f *plugin) String() string {
@@ -33,10 +39,12 @@ func (f *plugin) Module(req *http.Request, prefix string) (goproxy.Module, error
 		url:    f.url,
 		client: f.client,
 	}
-	if user, pass, ok := req.BasicAuth(); ok {
-		res.basicAuth.ok = true
-		res.basicAuth.user = user
-		res.basicAuth.password = pass
+	if f.passCreds != nil {
+		if user, pass, ok := req.BasicAuth(); ok && f.passCreds(req) {
+			res.basicAuth.ok = true
+			res.basicAuth.user = user
+			res.basicAuth.password = pass
+		}
 	}
 
 	return res, nil
