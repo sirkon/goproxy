@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/sirkon/goproxy"
+	"github.com/sirkon/goproxy/internal/module"
 )
 
 // NewPlugin plugin returning source pointing to another proxy
@@ -31,11 +32,16 @@ func (f *plugin) String() string {
 func (f *plugin) Module(req *http.Request, prefix string) (goproxy.Module, error) {
 	path, _, err := goproxy.GetModInfo(req, prefix)
 	if err != nil {
-		return nil, fmt.Errorf("%s invalid request: %s", req.URL, err)
+		return nil, fmt.Errorf("%s invalid request: %s", req.URL.Path, err)
+	}
+	reqPath, err := module.EncodePath(path)
+	if err != nil {
+		return nil, fmt.Errorf("%is invalid request: %s", req.URL.Path, err)
 	}
 
 	res := &cascadeModule{
 		mod:    path,
+		reqMod: reqPath,
 		url:    f.url,
 		client: f.client,
 	}
