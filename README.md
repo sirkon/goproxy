@@ -7,7 +7,7 @@ How to set up a middleware:
 
 1. Initiate router:
     ```go
-    r, err := router.NewRouter()
+    r, err := goproxy.NewRouter()
     ```
 2. Add needed handlers via
     ```go
