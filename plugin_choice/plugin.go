@@ -5,19 +5,19 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/sirkon/goproxy/source"
+	"github.com/sirkon/goproxy"
 )
 
 // New plugin which tries to return a source with each plugin consequently until success. Made specially for
 // apriori plugin
-func New(plugins ...source.Plugin) source.Plugin {
+func New(plugins ...goproxy.Plugin) goproxy.Plugin {
 	return &choice{
 		plugs: plugins,
 	}
 }
 
 type choice struct {
-	plugs []source.Plugin
+	plugs []goproxy.Plugin
 }
 
 func (c *choice) String() string {
@@ -28,9 +28,9 @@ func (c *choice) String() string {
 	return fmt.Sprintf("choice(%s)", strings.Join(plugs, ", "))
 }
 
-func (c *choice) Source(req *http.Request, prefix string) (source.Source, error) {
+func (c *choice) Module(req *http.Request, prefix string) (goproxy.Module, error) {
 	for _, plug := range c.plugs {
-		src, err := plug.Source(req, prefix)
+		src, err := plug.Module(req, prefix)
 		if err != nil {
 			continue
 		}
@@ -39,7 +39,7 @@ func (c *choice) Source(req *http.Request, prefix string) (source.Source, error)
 	return nil, fmt.Errorf("no suitable plugin found for request to %s", req.URL.Path)
 }
 
-func (c *choice) Leave(source source.Source) error {
+func (c *choice) Leave(source goproxy.Module) error {
 	return nil
 }
 

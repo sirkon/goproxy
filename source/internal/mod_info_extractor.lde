@@ -1,1 +1,0 @@
-ModInfoExtractor = ^'/' Module(string) "/@v/" Suffix(string);

@@ -7,15 +7,12 @@ import (
 	"strings"
 
 	"github.com/rs/zerolog"
-
-	"github.com/sirkon/goproxy/router"
-	"github.com/sirkon/goproxy/source"
 )
 
 // Middleware acts as go proxy with given router.
 //   transportPrefix is a head part of URL path which refers to address of go proxy before the module info. For example,
 // if we serving go proxy at https://0.0.0.0:8081/goproxy/..., transportPrefix will be "/goproxy"
-func Middleware(r *router.Router, transportPrefix string, logger *zerolog.Logger) http.Handler {
+func Middleware(r *Router, transportPrefix string, logger *zerolog.Logger) http.Handler {
 	return middleware{
 		prefix: transportPrefix,
 		router: r,
@@ -26,12 +23,12 @@ func Middleware(r *router.Router, transportPrefix string, logger *zerolog.Logger
 // middleware
 type middleware struct {
 	prefix string
-	router *router.Router
+	router *Router
 	logger *zerolog.Logger
 }
 
 func (m middleware) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	path, suffix, err := source.GetModInfo(req, m.prefix)
+	path, suffix, err := GetModInfo(req, m.prefix)
 	if err != nil {
 		m.logger.Error().Err(err).Str("prefix", m.prefix).Msg("wrong request")
 		w.WriteHeader(http.StatusBadRequest)
@@ -49,7 +46,7 @@ func (m middleware) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 	logger = logger.With().Str("plugin", factory.String()).Logger()
 
-	src, err := factory.Source(req, m.prefix)
+	src, err := factory.Module(req, m.prefix)
 	if err != nil {
 		logger.Error().Err(err).Msg("failed to get a source from plugin")
 		w.WriteHeader(http.StatusBadRequest)

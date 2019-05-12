@@ -1,4 +1,4 @@
-package source
+package goproxy
 
 import (
 	"fmt"
@@ -6,10 +6,43 @@ import (
 	"strings"
 
 	"github.com/sirkon/goproxy/internal/module"
-	"github.com/sirkon/goproxy/source/internal"
 )
 
-//go:generate ldetool generate --go-string --package extraction internal/mod_info_extractor.lde
+var slashDogVSlash = "/@v/"
+
+// modInfoExtraction ...
+type modInfoExtraction struct {
+	Rest   string
+	Module string
+	Suffix string
+}
+
+// Extract ...
+func (p *modInfoExtraction) Extract(line string) (bool, error) {
+	p.Rest = line
+	var pos int
+
+	// Checks if the rest starts with '/' and pass it
+	if len(p.Rest) >= 1 && p.Rest[0] == '/' {
+		p.Rest = p.Rest[1:]
+	} else {
+		return false, nil
+	}
+
+	// Take until "/@v/" as Module(string)
+	pos = strings.Index(p.Rest, slashDogVSlash)
+	if pos >= 0 {
+		p.Module = p.Rest[:pos]
+		p.Rest = p.Rest[pos+len(slashDogVSlash):]
+	} else {
+		return false, nil
+	}
+
+	// Take the rest as Suffix(string)
+	p.Suffix = p.Rest
+	p.Rest = p.Rest[len(p.Rest):]
+	return true, nil
+}
 
 // GetModInfo retrieves mod info from URL
 func GetModInfo(req *http.Request, prefix string) (path string, suffix string, err error) {
@@ -18,7 +51,7 @@ func GetModInfo(req *http.Request, prefix string) (path string, suffix string, e
 		err = fmt.Errorf("request URL path expected to be a %s*, got %s", prefix, method)
 	}
 	method = method[len(prefix):]
-	var e extraction.ModInfoExtractor
+	var e modInfoExtraction
 
 	if ok, _ := e.Extract(method); !ok {
 		err = fmt.Errorf("invalid go proxy request: wrong URL `%s`", method)

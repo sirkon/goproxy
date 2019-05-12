@@ -1,11 +1,11 @@
-package source
+package goproxy
 
 import (
 	"context"
 	"io"
 )
 
-// RevInfo describes a single revision in a module repository.
+// RevInfo describes a single revision of a module source
 type RevInfo struct {
 	Version string // version string
 	Time    string // commit time
@@ -16,8 +16,8 @@ type RevInfo struct {
 	Short string `json:"-"` // shortened ID, for use in pseudo-version
 }
 
-// Source represents source of code: some VSC (git, mercurial, svn, etc), Gitlab, another Go modules proxy, etc
-type Source interface {
+// Module represents go module: some VSC (git, mercurial, svn, etc), Gitlab, another Go modules proxy, etc
+type Module interface {
 	// ModulePath returns the module path.
 	ModulePath() string
 

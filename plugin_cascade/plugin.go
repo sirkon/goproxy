@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/sirkon/goproxy/source"
+	"github.com/sirkon/goproxy"
 )
 
 // NewPlugin plugin returning source pointing to another proxy
-func NewPlugin(url string) source.Plugin {
+func NewPlugin(url string) goproxy.Plugin {
 	return &plugin{url: url, client: &http.Client{}}
 }
 
@@ -22,13 +22,13 @@ func (f *plugin) String() string {
 	return "cascade"
 }
 
-func (f *plugin) Source(req *http.Request, prefix string) (source.Source, error) {
-	path, _, err := source.GetModInfo(req, prefix)
+func (f *plugin) Module(req *http.Request, prefix string) (goproxy.Module, error) {
+	path, _, err := goproxy.GetModInfo(req, prefix)
 	if err != nil {
 		return nil, fmt.Errorf("%s invalid request: %s", req.URL, err)
 	}
 
-	res := &cascadeSource{
+	res := &cascadeModule{
 		mod:    path,
 		url:    f.url,
 		client: f.client,
@@ -42,7 +42,7 @@ func (f *plugin) Source(req *http.Request, prefix string) (source.Source, error)
 	return res, nil
 }
 
-func (f *plugin) Leave(source source.Source) error {
+func (f *plugin) Leave(source goproxy.Module) error {
 	return nil
 }
 

@@ -6,12 +6,12 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	"github.com/sirkon/goproxy/source"
+	"github.com/sirkon/goproxy"
 )
 
 // ModuleInfo information needed for go modules proxy protocol
 type ModuleInfo struct {
-	RevInfo     source.RevInfo
+	RevInfo     goproxy.RevInfo
 	GoModPath   string
 	ArchivePath string
 }
@@ -22,7 +22,7 @@ type Mapping map[string]map[string]ModuleInfo
 // NewPlugin "apriori" - "cache" is boring: some file may contains information
 // <mod path> → <version> → (<rev info>, <go.mod path>, <zip archive path>) and what it hidden there is enough for a
 // functional go proxy serving exactly these modules at exactly these versions
-func NewPlugin(path string) (source.Plugin, error) {
+func NewPlugin(path string) (goproxy.Plugin, error) {
 	var res plugin
 	data, err := ioutil.ReadFile(path)
 	if err != nil {
@@ -38,8 +38,8 @@ type plugin struct {
 	mapping Mapping
 }
 
-func (p *plugin) Source(req *http.Request, prefix string) (source.Source, error) {
-	mod, _, err := source.GetModInfo(req, prefix)
+func (p *plugin) Module(req *http.Request, prefix string) (goproxy.Module, error) {
+	mod, _, err := goproxy.GetModInfo(req, prefix)
 	if err != nil {
 		return nil, err
 	}
@@ -47,10 +47,10 @@ func (p *plugin) Source(req *http.Request, prefix string) (source.Source, error)
 	if !ok {
 		return nil, fmt.Errorf("no module %s found in cache", mod)
 	}
-	return &sourceImpl{path: mod, mod: modInfo}, nil
+	return &aprioriModule{path: mod, mod: modInfo}, nil
 }
 
-func (p *plugin) Leave(source source.Source) error {
+func (p *plugin) Leave(source goproxy.Module) error {
 	return nil
 }
 

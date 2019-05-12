@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/sirkon/goproxy/internal/str"
+	"github.com/sirkon/goproxy/semver"
 )
 
 // FSRepacker methods for names transformations during repack process.
@@ -24,12 +25,9 @@ func Gitlab(projectPath string, version string) (FSRepacker, error) {
 }
 
 func gitlab(projectPath string, version string) (gitlabRepacker, error) {
-	var me MajorExtractor
-	if ok, _ := me.Extract(version); !ok {
-		return gitlabRepacker{}, fmt.Errorf("invalid semver value %s", version)
-	}
+	major := semver.Major(version)
 	return gitlabRepacker{
-		major:       me.Major,
+		major:       major,
 		version:     version,
 		projectPath: strings.Trim(projectPath, "/"),
 	}, nil

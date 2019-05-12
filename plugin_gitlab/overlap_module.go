@@ -8,25 +8,25 @@ import (
 
 	"github.com/rs/zerolog"
 
+	"github.com/sirkon/goproxy"
 	"github.com/sirkon/goproxy/internal/modfile"
-	"github.com/sirkon/goproxy/source"
 )
 
-var _ source.Source = overlapGitlabSource{}
+var _ goproxy.Module = overlapGitlabModule{}
 
-type overlapGitlabSource struct {
-	sources []source.Source
+type overlapGitlabModule struct {
+	sources []goproxy.Module
 	version int
 }
 
-func (s overlapGitlabSource) ModulePath() string {
+func (s overlapGitlabModule) ModulePath() string {
 	for _, ss := range s.sources {
 		return ss.ModulePath()
 	}
 	return ""
 }
 
-func (s overlapGitlabSource) Versions(ctx context.Context, prefix string) (tags []string, err error) {
+func (s overlapGitlabModule) Versions(ctx context.Context, prefix string) (tags []string, err error) {
 	for _, ss := range s.sources {
 		tags, err = ss.Versions(ctx, prefix)
 		if err == nil {
@@ -39,7 +39,7 @@ func (s overlapGitlabSource) Versions(ctx context.Context, prefix string) (tags 
 	return nil, fmt.Errorf("cannot get versions for given module")
 }
 
-func (s overlapGitlabSource) Stat(ctx context.Context, rev string) (*source.RevInfo, error) {
+func (s overlapGitlabModule) Stat(ctx context.Context, rev string) (*goproxy.RevInfo, error) {
 	for _, ss := range s.sources {
 		info, err := ss.Stat(ctx, rev)
 		if err == nil {
@@ -49,7 +49,7 @@ func (s overlapGitlabSource) Stat(ctx context.Context, rev string) (*source.RevI
 	return nil, fmt.Errorf("cannot get stat for given module")
 }
 
-func (s overlapGitlabSource) GoMod(ctx context.Context, version string) (data []byte, err error) {
+func (s overlapGitlabModule) GoMod(ctx context.Context, version string) (data []byte, err error) {
 	for _, ss := range s.sources {
 		zerolog.Ctx(ctx).Debug().Msg("I am here")
 		data, err = ss.GoMod(ctx, version)
@@ -71,7 +71,7 @@ func (s overlapGitlabSource) GoMod(ctx context.Context, version string) (data []
 	return nil, fmt.Errorf("failed to find go.mod for given module and version")
 }
 
-func (s overlapGitlabSource) Zip(ctx context.Context, version string) (file io.ReadCloser, err error) {
+func (s overlapGitlabModule) Zip(ctx context.Context, version string) (file io.ReadCloser, err error) {
 	for _, ss := range s.sources {
 		file, err = ss.Zip(ctx, version)
 		if err == nil {
@@ -83,7 +83,7 @@ func (s overlapGitlabSource) Zip(ctx context.Context, version string) (file io.R
 	return nil, fmt.Errorf("failed to find zip archive for given module and version")
 }
 
-func (s overlapGitlabSource) filterByVersion(tags []string) []string {
+func (s overlapGitlabModule) filterByVersion(tags []string) []string {
 	var res []string
 	filter := fmt.Sprintf("v%d", s.version)
 	for _, tag := range tags {
@@ -94,7 +94,7 @@ func (s overlapGitlabSource) filterByVersion(tags []string) []string {
 	return res
 }
 
-func (s overlapGitlabSource) getEarlyVersions(tags []string) []string {
+func (s overlapGitlabModule) getEarlyVersions(tags []string) []string {
 	var res []string
 	for _, tag := range tags {
 		if strings.HasPrefix(tag, "v0") || strings.HasPrefix(tag, "v1") {

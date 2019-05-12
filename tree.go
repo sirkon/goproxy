@@ -1,10 +1,8 @@
-package router
+package goproxy
 
 import (
 	"fmt"
 	"strings"
-
-	"github.com/sirkon/goproxy/source"
 )
 
 type nodeExtension struct {
@@ -13,19 +11,19 @@ type nodeExtension struct {
 }
 
 type node struct {
-	f       source.Plugin
+	f       Plugin
 	further []*nodeExtension
 }
 
-func (n *node) addNode(path string, f source.Plugin) error {
+func (n *node) addNode(path string, f Plugin) error {
 	return n.realAdd(path, path, f)
 }
 
-func (n *node) getNode(path string) source.Plugin {
+func (n *node) getNode(path string) Plugin {
 	return n.realGet(path, path)
 }
 
-func (n *node) realAdd(path string, origPath string, f source.Plugin) error {
+func (n *node) realAdd(path string, origPath string, f Plugin) error {
 	if len(path) == 0 {
 		if n.f == nil {
 			n.f = f
@@ -100,7 +98,7 @@ func commonPrefix(p1 string, p2 string) string {
 	return ""
 }
 
-func (n *node) realGet(path string, origPath string) source.Plugin {
+func (n *node) realGet(path string, origPath string) Plugin {
 	for _, ne := range n.further {
 		if strings.HasPrefix(path, ne.path) {
 			res := ne.node.realGet(path[len(ne.path):], origPath)

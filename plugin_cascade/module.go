@@ -9,12 +9,12 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/sirkon/goproxy/source"
+	"github.com/sirkon/goproxy"
 )
 
-var _ source.Source = &cascadeSource{}
+var _ goproxy.Module = &cascadeModule{}
 
-type cascadeSource struct {
+type cascadeModule struct {
 	mod       string
 	url       string
 	client    *http.Client
@@ -25,11 +25,11 @@ type cascadeSource struct {
 	}
 }
 
-func (s *cascadeSource) ModulePath() string {
+func (s *cascadeModule) ModulePath() string {
 	return s.mod
 }
 
-func (s *cascadeSource) Versions(ctx context.Context, prefix string) (tags []string, err error) {
+func (s *cascadeModule) Versions(ctx context.Context, prefix string) (tags []string, err error) {
 	resp, err := s.makeRequest(ctx, fmt.Sprintf("%s/%s/@v/list", s.url, s.mod))
 	if err != nil {
 		return nil, err
@@ -51,14 +51,14 @@ func (s *cascadeSource) Versions(ctx context.Context, prefix string) (tags []str
 	return res, nil
 }
 
-func (s *cascadeSource) Stat(ctx context.Context, rev string) (*source.RevInfo, error) {
+func (s *cascadeModule) Stat(ctx context.Context, rev string) (*goproxy.RevInfo, error) {
 	resp, err := s.makeRequest(ctx, fmt.Sprintf("%s/%s/@v/%s.info", s.url, s.mod, rev))
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
 
-	var dest source.RevInfo
+	var dest goproxy.RevInfo
 	decoder := json.NewDecoder(resp.Body)
 	if err := decoder.Decode(&dest); err != nil {
 		return nil, fmt.Errorf("failed to decode stat data for %s: %s", s.mod, err)
@@ -67,7 +67,7 @@ func (s *cascadeSource) Stat(ctx context.Context, rev string) (*source.RevInfo, 
 	return &dest, nil
 }
 
-func (s *cascadeSource) GoMod(ctx context.Context, version string) (data []byte, err error) {
+func (s *cascadeModule) GoMod(ctx context.Context, version string) (data []byte, err error) {
 	resp, err := s.makeRequest(ctx, fmt.Sprintf("%s/%s/@v/%s.mod", s.url, s.mod, version))
 	if err != nil {
 		return nil, err
@@ -82,7 +82,7 @@ func (s *cascadeSource) GoMod(ctx context.Context, version string) (data []byte,
 	return
 }
 
-func (s *cascadeSource) Zip(ctx context.Context, version string) (file io.ReadCloser, err error) {
+func (s *cascadeModule) Zip(ctx context.Context, version string) (file io.ReadCloser, err error) {
 	resp, err := s.makeRequest(ctx, fmt.Sprintf("%s/%s/@v/%s.zip", s.url, s.mod, version))
 	if err != nil {
 		return nil, err
@@ -91,7 +91,7 @@ func (s *cascadeSource) Zip(ctx context.Context, version string) (file io.ReadCl
 	return resp.Body, nil
 }
 
-func (s *cascadeSource) makeRequest(ctx context.Context, url string) (*http.Response, error) {
+func (s *cascadeModule) makeRequest(ctx context.Context, url string) (*http.Response, error) {
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate request on %s: %s", url, err)

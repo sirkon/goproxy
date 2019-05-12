@@ -6,8 +6,8 @@ import (
 	"os"
 	"sync"
 
+	"github.com/sirkon/goproxy"
 	"github.com/sirkon/goproxy/internal/modfetch"
-	"github.com/sirkon/goproxy/source"
 )
 
 // plugin creates source for VCS repositories
@@ -24,7 +24,7 @@ func (f *plugin) String() string {
 }
 
 // NewPlugin creates new valid plugin instance
-func NewPlugin(rootDir string) (f source.Plugin, err error) {
+func NewPlugin(rootDir string) (f goproxy.Plugin, err error) {
 	setupEnv(rootDir)
 	stat, err := os.Stat(rootDir)
 	if os.IsNotExist(err) {
@@ -56,9 +56,9 @@ func NewPlugin(rootDir string) (f source.Plugin, err error) {
 	}, nil
 }
 
-// Source creates a source for a module with given path
-func (f *plugin) Source(req *http.Request, prefix string) (source.Source, error) {
-	path, _, err := source.GetModInfo(req, prefix)
+// Module creates a source for a module with given path
+func (f *plugin) Module(req *http.Request, prefix string) (goproxy.Module, error) {
+	path, _, err := goproxy.GetModInfo(req, prefix)
 	if err != nil {
 		return nil, err
 	}
@@ -68,13 +68,13 @@ func (f *plugin) Source(req *http.Request, prefix string) (source.Source, error)
 		return nil, err
 	}
 
-	return &vscSource{
+	return &vcsModule{
 		repo: repo,
 	}, nil
 }
 
 // Leave unset a lock of a given module
-func (f *plugin) Leave(s source.Source) error {
+func (f *plugin) Leave(s goproxy.Module) error {
 	return nil
 }
 

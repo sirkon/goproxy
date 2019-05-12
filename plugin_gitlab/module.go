@@ -10,22 +10,22 @@ import (
 
 	"github.com/sirkon/gitlab"
 
+	"github.com/sirkon/goproxy"
 	"github.com/sirkon/goproxy/fsrepack"
 	"github.com/sirkon/goproxy/internal/semver"
-	"github.com/sirkon/goproxy/source"
 )
 
-type gitlabSource struct {
+type gitlabModule struct {
 	client   gitlab.Client
 	fullPath string
 	path     string
 }
 
-func (s *gitlabSource) ModulePath() string {
+func (s *gitlabModule) ModulePath() string {
 	return s.path
 }
 
-func (s *gitlabSource) Versions(ctx context.Context, prefix string) ([]string, error) {
+func (s *gitlabModule) Versions(ctx context.Context, prefix string) ([]string, error) {
 	tags, err := s.client.Tags(ctx, s.path, "")
 	if err != nil {
 		return nil, fmt.Errorf("failed to get tags from gitlab repository: %s", err)
@@ -44,7 +44,7 @@ func (s *gitlabSource) Versions(ctx context.Context, prefix string) ([]string, e
 	return resp, nil
 }
 
-func (s *gitlabSource) Stat(ctx context.Context, rev string) (*source.RevInfo, error) {
+func (s *gitlabModule) Stat(ctx context.Context, rev string) (*goproxy.RevInfo, error) {
 	tags, err := s.client.Tags(ctx, s.path, rev)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get tags from gitlab repository: %s", err)
@@ -53,7 +53,7 @@ func (s *gitlabSource) Stat(ctx context.Context, rev string) (*source.RevInfo, e
 	// Looking for exact revision match
 	for _, tag := range tags {
 		if tag.Name == rev {
-			return &source.RevInfo{
+			return &goproxy.RevInfo{
 				Version: tag.Name,
 				Time:    tag.Commit.CreatedAt,
 				Name:    tag.Commit.ID,
@@ -65,7 +65,7 @@ func (s *gitlabSource) Stat(ctx context.Context, rev string) (*source.RevInfo, e
 	return nil, fmt.Errorf("state: unknown revision %s for %s", rev, s.path)
 }
 
-func (s *gitlabSource) GoMod(ctx context.Context, version string) (data []byte, err error) {
+func (s *gitlabModule) GoMod(ctx context.Context, version string) (data []byte, err error) {
 	return s.client.File(ctx, s.path, "go.mod", version)
 }
 
@@ -76,7 +76,7 @@ type bufferCloser struct {
 // Close makes bufferCloser io.ReadCloser
 func (*bufferCloser) Close() error { return nil }
 
-func (s *gitlabSource) Zip(ctx context.Context, version string) (io.ReadCloser, error) {
+func (s *gitlabModule) Zip(ctx context.Context, version string) (io.ReadCloser, error) {
 	modInfo, err := s.client.ProjectInfo(ctx, s.path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get project %s info: %s", s.path, err)

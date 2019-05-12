@@ -79,7 +79,7 @@ type PackagePublic struct {
 	Stale       bool   `json:",omitempty"` // would 'go install' do anything for this package?
 	StaleReason string `json:",omitempty"` // why is Stale true?
 
-	// Source files
+	// Module files
 	// If you add to this list you MUST add to p.AllFiles (below) too.
 	// Otherwise file name security lists will not apply to any new additions.
 	GoFiles         []string `json:",omitempty"` // .go source files (excluding CgoFiles, TestGoFiles, XTestGoFiles)

@@ -9,19 +9,19 @@ import (
 
 	"github.com/rs/zerolog"
 
+	"github.com/sirkon/goproxy"
 	"github.com/sirkon/goproxy/internal/modfetch"
-	"github.com/sirkon/goproxy/source"
 )
 
-type vscSource struct {
+type vcsModule struct {
 	repo modfetch.Repo
 }
 
-func (s *vscSource) ModulePath() string {
+func (s *vcsModule) ModulePath() string {
 	return s.repo.ModulePath()
 }
 
-func (s *vscSource) Versions(ctx context.Context, prefix string) (tags []string, err error) {
+func (s *vcsModule) Versions(ctx context.Context, prefix string) (tags []string, err error) {
 	type data struct {
 		tags []string
 		err  error
@@ -51,9 +51,9 @@ func (s *vscSource) Versions(ctx context.Context, prefix string) (tags []string,
 	}
 }
 
-func (s *vscSource) Stat(ctx context.Context, rev string) (*source.RevInfo, error) {
+func (s *vcsModule) Stat(ctx context.Context, rev string) (*goproxy.RevInfo, error) {
 	type data struct {
-		info *source.RevInfo
+		info *goproxy.RevInfo
 		err  error
 	}
 	dataChan := make(chan data, 1)
@@ -66,7 +66,7 @@ func (s *vscSource) Stat(ctx context.Context, rev string) (*source.RevInfo, erro
 			}
 			return
 		}
-		res := &source.RevInfo{}
+		res := &goproxy.RevInfo{}
 		res.Name = raw.Name
 		res.Short = raw.Short
 		res.Time = raw.Time.Format(time.RFC3339)
@@ -85,7 +85,7 @@ func (s *vscSource) Stat(ctx context.Context, rev string) (*source.RevInfo, erro
 	}
 }
 
-func (s *vscSource) GoMod(ctx context.Context, version string) ([]byte, error) {
+func (s *vcsModule) GoMod(ctx context.Context, version string) ([]byte, error) {
 	type data struct {
 		data []byte
 		err  error
@@ -107,7 +107,7 @@ func (s *vscSource) GoMod(ctx context.Context, version string) ([]byte, error) {
 	}
 }
 
-func (s *vscSource) Zip(ctx context.Context, version string) (file io.ReadCloser, err error) {
+func (s *vcsModule) Zip(ctx context.Context, version string) (file io.ReadCloser, err error) {
 	type data struct {
 		file io.ReadCloser
 		err  error

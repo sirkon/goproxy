@@ -8,20 +8,20 @@ import (
 	"os"
 	"sort"
 
+	"github.com/sirkon/goproxy"
 	"github.com/sirkon/goproxy/semver"
-	"github.com/sirkon/goproxy/source"
 )
 
-type sourceImpl struct {
+type aprioriModule struct {
 	path string
 	mod  map[string]ModuleInfo
 }
 
-func (s *sourceImpl) ModulePath() string {
+func (s *aprioriModule) ModulePath() string {
 	return s.path
 }
 
-func (s *sourceImpl) Versions(ctx context.Context, prefix string) (tags []string, err error) {
+func (s *aprioriModule) Versions(ctx context.Context, prefix string) (tags []string, err error) {
 	for version := range s.mod {
 		tags = append(tags, version)
 	}
@@ -36,7 +36,7 @@ func (s *sourceImpl) Versions(ctx context.Context, prefix string) (tags []string
 	return
 }
 
-func (s *sourceImpl) Stat(ctx context.Context, rev string) (*source.RevInfo, error) {
+func (s *aprioriModule) Stat(ctx context.Context, rev string) (*goproxy.RevInfo, error) {
 	res, ok := s.mod[rev]
 	if !ok {
 		return nil, s.errMsg("version %s not found", rev)
@@ -44,7 +44,7 @@ func (s *sourceImpl) Stat(ctx context.Context, rev string) (*source.RevInfo, err
 	return &res.RevInfo, nil
 }
 
-func (s *sourceImpl) GoMod(ctx context.Context, version string) (data []byte, err error) {
+func (s *aprioriModule) GoMod(ctx context.Context, version string) (data []byte, err error) {
 	item, ok := s.mod[version]
 	if !ok {
 		return nil, fmt.Errorf("module %s: version %s not found", version)
@@ -56,7 +56,7 @@ func (s *sourceImpl) GoMod(ctx context.Context, version string) (data []byte, er
 	return
 }
 
-func (s *sourceImpl) Zip(ctx context.Context, version string) (file io.ReadCloser, err error) {
+func (s *aprioriModule) Zip(ctx context.Context, version string) (file io.ReadCloser, err error) {
 	item, ok := s.mod[version]
 	if !ok {
 		return nil, fmt.Errorf("module %s: version %s not found", version)
@@ -68,7 +68,7 @@ func (s *sourceImpl) Zip(ctx context.Context, version string) (file io.ReadClose
 	return
 }
 
-func (s *sourceImpl) errMsg(format string, a ...interface{}) error {
+func (s *aprioriModule) errMsg(format string, a ...interface{}) error {
 	head := "module " + s.path + ": "
 	return fmt.Errorf(head+format, a...)
 }

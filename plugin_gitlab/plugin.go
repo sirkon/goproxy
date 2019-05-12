@@ -7,7 +7,7 @@ import (
 
 	"github.com/sirkon/gitlab"
 
-	"github.com/sirkon/goproxy/source"
+	"github.com/sirkon/goproxy"
 )
 
 // plugin of sources for gitlab
@@ -22,7 +22,7 @@ func (f *plugin) String() string {
 }
 
 // NewPlugin constructor
-func NewPlugin(access gitlab.APIAccess, needAuth bool) source.Plugin {
+func NewPlugin(access gitlab.APIAccess, needAuth bool) goproxy.Plugin {
 	return &plugin{
 		apiAccess: access,
 		needAuth:  needAuth,
@@ -30,7 +30,7 @@ func NewPlugin(access gitlab.APIAccess, needAuth bool) source.Plugin {
 }
 
 // NewPluginToken constructor
-func NewPluginToken(access gitlab.APIAccess, token string) source.Plugin {
+func NewPluginToken(access gitlab.APIAccess, token string) goproxy.Plugin {
 	return &plugin{
 		apiAccess: access,
 		token:     token,
@@ -39,7 +39,7 @@ func NewPluginToken(access gitlab.APIAccess, token string) source.Plugin {
 }
 
 // NewPluginGitlabClient constructor with given gitlab apiAccess
-func NewPluginGitlabClient(needAuth bool, access gitlab.APIAccess) source.Plugin {
+func NewPluginGitlabClient(needAuth bool, access gitlab.APIAccess) goproxy.Plugin {
 	return &plugin{
 		apiAccess: access,
 		needAuth:  needAuth,
@@ -47,7 +47,7 @@ func NewPluginGitlabClient(needAuth bool, access gitlab.APIAccess) source.Plugin
 }
 
 // NewPluginGitlabTokenClient constructor with given gitlab apiAccess
-func NewPluginGitlabTokenClient(token string, access gitlab.APIAccess) source.Plugin {
+func NewPluginGitlabTokenClient(token string, access gitlab.APIAccess) goproxy.Plugin {
 	return &plugin{
 		apiAccess: access,
 		token:     token,
@@ -63,8 +63,8 @@ func getGitlabPath(fullPath string) string {
 	return fullPath
 }
 
-func (f *plugin) Source(req *http.Request, prefix string) (source.Source, error) {
-	path, _, err := source.GetModInfo(req, prefix)
+func (f *plugin) Module(req *http.Request, prefix string) (goproxy.Module, error) {
+	path, _, err := goproxy.GetModInfo(req, prefix)
 	if err != nil {
 		return nil, err
 	}
@@ -83,7 +83,7 @@ func (f *plugin) Source(req *http.Request, prefix string) (source.Source, error)
 		token = f.token
 	}
 
-	s1 := &gitlabSource{
+	s1 := &gitlabModule{
 		fullPath: fullPath,
 		path:     path,
 		client:   f.apiAccess.Client(token),
@@ -92,8 +92,8 @@ func (f *plugin) Source(req *http.Request, prefix string) (source.Source, error)
 	// cut the tail and see if it denounces version suffix (vXYZ)
 	pos := strings.LastIndexByte(fullPath, '/')
 	if pos < 0 {
-		return overlapGitlabSource{
-			sources: []source.Source{s1},
+		return overlapGitlabModule{
+			sources: []goproxy.Module{s1},
 			version: 0,
 		}, nil
 	}
@@ -101,8 +101,8 @@ func (f *plugin) Source(req *http.Request, prefix string) (source.Source, error)
 	tail := fullPath[pos+1:]
 	var ve pathVersionExtractor
 	if ok, _ := ve.Extract(tail); !ok {
-		return overlapGitlabSource{
-			sources: []source.Source{s1},
+		return overlapGitlabModule{
+			sources: []goproxy.Module{s1},
 			version: 0,
 		}, nil
 	}
@@ -110,20 +110,20 @@ func (f *plugin) Source(req *http.Request, prefix string) (source.Source, error)
 	fullPath = fullPath[:pos]
 	path = getGitlabPath(fullPath)
 
-	s2 := &gitlabSource{
+	s2 := &gitlabModule{
 		fullPath: fullPath,
 		path:     path,
 		client:   f.apiAccess.Client(token),
 	}
 
-	return overlapGitlabSource{
-		sources: []source.Source{s1, s2},
+	return overlapGitlabModule{
+		sources: []goproxy.Module{s1, s2},
 		version: ve.Version,
 	}, nil
 
 }
 
-func (f *plugin) Leave(source source.Source) error {
+func (f *plugin) Leave(source goproxy.Module) error {
 	return nil
 }
 

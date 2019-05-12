@@ -67,7 +67,7 @@ to -f '{{.ImportPath}}'. The struct being passed to the template is:
         Match         []string // command-line patterns matching this package
         DepOnly       bool     // package is only a dependency, not explicitly listed
 
-        // Source files
+        // Module files
         GoFiles         []string // .go source files (excluding CgoFiles, TestGoFiles, XTestGoFiles)
         CgoFiles        []string // .go source files that import "C"
         CompiledGoFiles []string // .go files presented to compiler (when using -compiled)

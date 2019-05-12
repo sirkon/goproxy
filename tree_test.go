@@ -1,21 +1,21 @@
-package router
+package goproxy
 
 import (
 	"net/http"
 	"sort"
 	"testing"
 
-	"github.com/sirkon/goproxy/source"
 	"github.com/stretchr/testify/require"
 )
 
-var _ source.Plugin = plugin("")
+var _ Plugin = plugin("")
 
 type plugin string
 
-func (plugin) Source(req *http.Request, prefix string) (source.Source, error) { panic("implement me") }
-func (plugin) Leave(source source.Source) error                               { panic("implement me") }
-func (plugin) Close() error                                                   { panic("implement me") }
+func (plugin) Module(req *http.Request, prefix string) (Module, error) { panic("implement me") }
+func (plugin) Leave(source Module) error                               { panic("implement me") }
+func (plugin) Close() error                                            { panic("implement me") }
+func (plugin) String() string                                          { return "plugin" }
 
 func nodeLists(n *node) [][]string {
 	res := [][]string{}

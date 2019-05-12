@@ -16,9 +16,8 @@ import (
 	gitlab2 "github.com/sirkon/gitlab"
 
 	"github.com/sirkon/goproxy"
-	"github.com/sirkon/goproxy/router"
-	"github.com/sirkon/goproxy/source/gitlab"
-	"github.com/sirkon/goproxy/source/vcs"
+	gitlab "github.com/sirkon/goproxy/plugin_gitlab"
+	vcs "github.com/sirkon/goproxy/plugin_vcs"
 )
 
 var listen string
@@ -69,7 +68,7 @@ func main() {
 
 	log.Info().Str("listen", listen).Msg("start listening")
 
-	r, err := router.NewRouter()
+	r, err := goproxy.NewRouter()
 	if err != nil {
 		log.Fatal().Err(err)
 	}
