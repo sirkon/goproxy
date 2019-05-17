@@ -27,7 +27,7 @@ type Repo interface {
 	ModulePath() string
 
 	// Versions lists all known versions with the given prefix.
-	// Pseudo-versions are not included.
+	// pseudo-versions are not included.
 	// Versions should be returned sorted in semver order
 	// (implementations can use SortVersions).
 	Versions(prefix string) (tags []string, err error)

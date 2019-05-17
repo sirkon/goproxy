@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/rs/zerolog"
 )
@@ -126,5 +127,33 @@ func (m middleware) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 // getVersion we have something like v0.1.2.zip or v0.1.2.info or v0.1.2.zip in the suffix and need to cut the
 func getVersion(suffix string) string {
 	off := strings.LastIndex(suffix, ".")
-	return suffix[:off]
+	encoding := suffix[:off]
+
+	var buf []byte
+	bang := false
+	for _, r := range encoding {
+		if r >= utf8.RuneSelf {
+			return encoding
+		}
+		if bang {
+			bang = false
+			if r < 'a' || 'z' < r {
+				return encoding
+			}
+			buf = append(buf, byte(r+'A'-'a'))
+			continue
+		}
+		if r == '!' {
+			bang = true
+			continue
+		}
+		if 'A' <= r && r <= 'Z' {
+			return encoding
+		}
+		buf = append(buf, byte(r))
+	}
+	if bang {
+		return encoding
+	}
+	return string(buf)
 }

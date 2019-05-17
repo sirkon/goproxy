@@ -9,10 +9,11 @@ import (
 	"io/ioutil"
 
 	"github.com/sirkon/gitlab"
+	"github.com/sirkon/gitlab/gitlabdata"
 
 	"github.com/sirkon/goproxy"
 	"github.com/sirkon/goproxy/fsrepack"
-	"github.com/sirkon/goproxy/internal/semver"
+	"github.com/sirkon/goproxy/semver"
 )
 
 type gitlabModule struct {
@@ -45,6 +46,29 @@ func (s *gitlabModule) Versions(ctx context.Context, prefix string) ([]string, e
 }
 
 func (s *gitlabModule) Stat(ctx context.Context, rev string) (*goproxy.RevInfo, error) {
+	if semver.IsValid(rev) {
+		return s.statVersion(ctx, rev)
+	}
+
+	// revision looks like a branch or non-semver tag, need to build pseudo-version
+	return s.statWithPseudoVersion(ctx, rev)
+}
+
+// statVersion processing for semver revision
+func (s *gitlabModule) statVersion(ctx context.Context, rev string) (*goproxy.RevInfo, error) {
+	// check if this rev does look like pseudo-version – will try statWithPseudoVersion in this case with short SHA
+	pseudo := semver.Pseudo(rev)
+	if len(pseudo) > 0 {
+		res, err := s.statWithPseudoVersion(ctx, pseudo)
+		if err == nil {
+			// should use base version from the commit itself
+			if semver.Compare(rev, res.Version) > 0 {
+				res.Version = rev
+			}
+			return res, nil
+		}
+	}
+
 	tags, err := s.client.Tags(ctx, s.path, rev)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get tags from gitlab repository: %s", err)
@@ -65,7 +89,65 @@ func (s *gitlabModule) Stat(ctx context.Context, rev string) (*goproxy.RevInfo, 
 	return nil, fmt.Errorf("state: unknown revision %s for %s", rev, s.path)
 }
 
+func (s *gitlabModule) statWithPseudoVersion(ctx context.Context, rev string) (*goproxy.RevInfo, error) {
+	commits, err := s.client.Commits(ctx, s.path, rev)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get commits for `%s`: %s", rev, err)
+	}
+	if len(commits) == 0 {
+		return nil, fmt.Errorf("no commits found for revision %s", rev)
+	}
+
+	commitMap := make(map[string]*gitlabdata.Commit, len(commits))
+	for _, commit := range commitMap {
+		commitMap[commit.ID] = commit
+	}
+
+	// looking for the most recent semver tag
+	tags, err := s.client.Tags(ctx, s.path, "") // all tags
+	maxVer := "v0.0.0"
+	for _, tag := range tags {
+		if _, ok := commitMap[tag.Commit.ID]; !ok {
+			continue
+		}
+		if !semver.IsValid(tag.Name) {
+			continue
+		}
+		maxVer = semver.Max(maxVer, tag.Name)
+	}
+
+	// Should set appropriate version
+	base := semver.Base(maxVer)
+	commit := commits[0]
+
+	moment := commit.CreatedAt
+	var (
+		year   = moment[:4]
+		month  = moment[5:7]
+		day    = moment[8:10]
+		hour   = moment[11:13]
+		minute = moment[14:16]
+		second = moment[17:19]
+	)
+	pseudoVersion := fmt.Sprintf("%s-%s%s%s%s%s%s-%s",
+		base,
+		year, month, day, hour, minute, second,
+		commit.ShortID,
+	)
+	return &goproxy.RevInfo{
+		Version: pseudoVersion,
+		Time:    moment,
+	}, nil
+}
+
 func (s *gitlabModule) GoMod(ctx context.Context, version string) (data []byte, err error) {
+	// try with pseudo version first
+	if sha := semver.Pseudo(version); len(sha) > 0 {
+		res, err := s.client.File(ctx, s.path, "go.mod", sha)
+		if err == nil {
+			return res, nil
+		}
+	}
 	return s.client.File(ctx, s.path, "go.mod", version)
 }
 
@@ -77,12 +159,22 @@ type bufferCloser struct {
 func (*bufferCloser) Close() error { return nil }
 
 func (s *gitlabModule) Zip(ctx context.Context, version string) (io.ReadCloser, error) {
+	if sha := semver.Pseudo(version); len(sha) > 0 {
+		res, err := s.getZip(ctx, sha, version)
+		if err == nil {
+			return res, nil
+		}
+	}
+	return s.getZip(ctx, version, version)
+}
+
+func (s *gitlabModule) getZip(ctx context.Context, revision, version string) (io.ReadCloser, error) {
 	modInfo, err := s.client.ProjectInfo(ctx, s.path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get project %s info: %s", s.path, err)
 	}
 
-	archive, err := s.client.Archive(ctx, modInfo.ID, version)
+	archive, err := s.client.Archive(ctx, modInfo.ID, revision)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get zipped archive data: %s", err)
 	}

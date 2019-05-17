@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// Pseudo-versions
+// pseudo-versions
 //
 // Code authors are expected to tag the revisions they want users to use,
 // including prereleases. However, not all authors tag versions at all,
