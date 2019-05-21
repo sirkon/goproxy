@@ -10,6 +10,7 @@ import (
 
 	"github.com/sirkon/goproxy"
 	"github.com/sirkon/goproxy/internal/modfile"
+	"github.com/sirkon/goproxy/semver"
 )
 
 var _ goproxy.Module = overlapGitlabModule{}
@@ -43,6 +44,13 @@ func (s overlapGitlabModule) Stat(ctx context.Context, rev string) (*goproxy.Rev
 	for _, ss := range s.sources {
 		info, err := ss.Stat(ctx, rev)
 		if err == nil {
+			// need to check if major in result is less than requested version. Need to use v<Major>.0.0 prefix instead
+			base, moment, sha := semver.PseudoParts(info.Version)
+			if len(base) != 0 {
+				if semver.Major(base) < s.version {
+					info.Version = fmt.Sprintf("v%d.0.0-pre-%s-%s", s.version, moment, sha)
+				}
+			}
 			return info, nil
 		}
 	}
@@ -51,7 +59,6 @@ func (s overlapGitlabModule) Stat(ctx context.Context, rev string) (*goproxy.Rev
 
 func (s overlapGitlabModule) GoMod(ctx context.Context, version string) (data []byte, err error) {
 	for _, ss := range s.sources {
-		zerolog.Ctx(ctx).Debug().Msg("I am here")
 		data, err = ss.GoMod(ctx, version)
 		if err != nil {
 			zerolog.Ctx(ctx).Warn().Err(err).Msgf("failed to get zip archive for %s", ss.ModulePath())

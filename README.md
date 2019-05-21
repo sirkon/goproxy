@@ -51,3 +51,4 @@ There's an example which supports regular `go get`-like module retrieval and git
     export GOPROXY=http://<gitlab private token>@localhost:8081
     ```
     Remember, you must generate gitlab private token first otherwise gitlab may reject your requests
+
