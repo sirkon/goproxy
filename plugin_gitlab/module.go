@@ -130,7 +130,7 @@ func (s *gitlabModule) statWithPseudoVersion(ctx context.Context, rev string) (*
 	}
 
 	commitMap := make(map[string]*gitlabdata.Commit, len(commits))
-	for _, commit := range commitMap {
+	for _, commit := range commits {
 		commitMap[commit.ID] = commit
 	}
 
