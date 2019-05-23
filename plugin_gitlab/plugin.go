@@ -3,6 +3,7 @@ package gitlab
 import (
 	"fmt"
 	"net/http"
+	path2 "path"
 	"strings"
 
 	"github.com/sirkon/gitlab"
@@ -98,19 +99,24 @@ func (f *plugin) Module(req *http.Request, prefix string) (goproxy.Module, error
 	tail := fullPath[pos+1:]
 	var ve pathVersionExtractor
 	if ok, _ := ve.Extract(tail); !ok {
-		major := ve.Version
-		pos := strings.LastIndexByte(path, '/')
 
 		return &gitlabModule{
 			client:          f.apiAccess.Client(token),
 			fullPath:        fullPath,
 			path:            path,
-			pathUnversioned: path[:pos],
-			major:           major,
+			pathUnversioned: path,
+			major:           0,
 		}, nil
 	}
 
-	return nil, fmt.Errorf("wrong module path %s", fullPath)
+	unversionedPath, _ := path2.Split(path)
+	return &gitlabModule{
+		client:          f.apiAccess.Client(token),
+		fullPath:        fullPath,
+		path:            path,
+		pathUnversioned: strings.Trim(unversionedPath, "/"),
+		major:           ve.Version,
+	}, nil
 }
 
 func (f *plugin) Leave(source goproxy.Module) error {
