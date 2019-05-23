@@ -8,18 +8,22 @@ import (
 	"io"
 	"io/ioutil"
 
+	"github.com/rs/zerolog"
 	"github.com/sirkon/gitlab"
 	"github.com/sirkon/gitlab/gitlabdata"
 
 	"github.com/sirkon/goproxy"
 	"github.com/sirkon/goproxy/fsrepack"
+	"github.com/sirkon/goproxy/gomod"
 	"github.com/sirkon/goproxy/semver"
 )
 
 type gitlabModule struct {
-	client   gitlab.Client
-	fullPath string
-	path     string
+	client          gitlab.Client
+	fullPath        string
+	path            string
+	pathUnversioned string
+	major           int
 }
 
 func (s *gitlabModule) ModulePath() string {
@@ -27,7 +31,16 @@ func (s *gitlabModule) ModulePath() string {
 }
 
 func (s *gitlabModule) Versions(ctx context.Context, prefix string) ([]string, error) {
-	tags, err := s.client.Tags(ctx, s.path, "")
+	tags, err := s.getVersions(ctx, prefix, s.pathUnversioned)
+	if err == nil {
+		return tags, nil
+	}
+	zerolog.Ctx(ctx).Warn().Err(err).Msgf("failed to get with unversioned path `%s`, it looks like we are dealing with a car zealot :)")
+	return s.getVersions(ctx, prefix, s.path)
+}
+
+func (s *gitlabModule) getVersions(ctx context.Context, prefix string, path string) ([]string, error) {
+	tags, err := s.client.Tags(ctx, path, "")
 	if err != nil {
 		return nil, fmt.Errorf("failed to get tags from gitlab repository: %s", err)
 	}
@@ -39,13 +52,25 @@ func (s *gitlabModule) Versions(ctx context.Context, prefix string) ([]string, e
 		}
 	}
 	if len(resp) == 0 {
-		return nil, fmt.Errorf("invalid repository %s, not tags found", s.path)
+		return nil, fmt.Errorf("invalid repository %s, not tags found", path)
 	}
 
 	return resp, nil
 }
 
 func (s *gitlabModule) Stat(ctx context.Context, rev string) (*goproxy.RevInfo, error) {
+	res, err := s.getStat(ctx, rev)
+	if err != nil {
+		return nil, err
+	}
+
+	if major := semver.Major(res.Version); major >= 2 && s.major < major {
+		return nil, fmt.Errorf("branch relates to higher major version v%d than what was expected from module path (v%d)", major, s.major)
+	}
+	return res, nil
+}
+
+func (s *gitlabModule) getStat(ctx context.Context, rev string) (res *goproxy.RevInfo, err error) {
 	if semver.IsValid(rev) {
 		return s.statVersion(ctx, rev)
 	}
@@ -69,9 +94,12 @@ func (s *gitlabModule) statVersion(ctx context.Context, rev string) (*goproxy.Re
 		}
 	}
 
-	tags, err := s.client.Tags(ctx, s.path, rev)
+	tags, err := s.client.Tags(ctx, s.pathUnversioned, rev)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get tags from gitlab repository: %s", err)
+		tags, err = s.client.Tags(ctx, s.path, rev)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get tags from gitlab repository: %s", err)
+		}
 	}
 
 	// Looking for exact revision match
@@ -90,9 +118,12 @@ func (s *gitlabModule) statVersion(ctx context.Context, rev string) (*goproxy.Re
 }
 
 func (s *gitlabModule) statWithPseudoVersion(ctx context.Context, rev string) (*goproxy.RevInfo, error) {
-	commits, err := s.client.Commits(ctx, s.path, rev)
+	commits, err := s.client.Commits(ctx, s.pathUnversioned, rev)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get commits for `%s`: %s", rev, err)
+		commits, err = s.client.Commits(ctx, s.path, rev)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get commits for `%s`: %s", rev, err)
+		}
 	}
 	if len(commits) == 0 {
 		return nil, fmt.Errorf("no commits found for revision %s", rev)
@@ -104,7 +135,13 @@ func (s *gitlabModule) statWithPseudoVersion(ctx context.Context, rev string) (*
 	}
 
 	// looking for the most recent semver tag
-	tags, err := s.client.Tags(ctx, s.path, "") // all tags
+	tags, err := s.client.Tags(ctx, s.pathUnversioned, "") // all tags
+	if err != nil {
+		tags, err = s.client.Tags(ctx, s.path, "")
+		if err != nil {
+			return nil, fmt.Errorf("failed to get tags: %s", err)
+		}
+	}
 	maxVer := "v0.0.0"
 	for _, tag := range tags {
 		if _, ok := commitMap[tag.Commit.ID]; !ok {
@@ -116,8 +153,15 @@ func (s *gitlabModule) statWithPseudoVersion(ctx context.Context, rev string) (*
 		maxVer = semver.Max(maxVer, tag.Name)
 	}
 
+	var base string
+	if semver.Major(maxVer) < s.major {
+		base = fmt.Sprintf("v%d.0.0-pre")
+	} else {
+		major, minor, patch := semver.MajorMinorPatch(maxVer)
+		base = fmt.Sprintf("v%d.%d.%d-", major, minor, patch+1)
+	}
+
 	// Should set appropriate version
-	base := semver.Base(maxVer)
 	commit := commits[0]
 
 	moment := commit.CreatedAt
@@ -129,7 +173,7 @@ func (s *gitlabModule) statWithPseudoVersion(ctx context.Context, rev string) (*
 		minute = moment[14:16]
 		second = moment[17:19]
 	)
-	pseudoVersion := fmt.Sprintf("%s-%s%s%s%s%s%s-%s",
+	pseudoVersion := fmt.Sprintf("%s%s%s%s%s%s%s-%s",
 		base,
 		year, month, day, hour, minute, second,
 		commit.ShortID,
@@ -141,12 +185,38 @@ func (s *gitlabModule) statWithPseudoVersion(ctx context.Context, rev string) (*
 }
 
 func (s *gitlabModule) GoMod(ctx context.Context, version string) (data []byte, err error) {
+	goMod, err := s.getGoMod(ctx, version)
+	if err != nil {
+		return nil, err
+	}
+
+	res, err := gomod.Parse("go.mod", goMod)
+	if err != nil {
+		return nil, fmt.Errorf("invalid go.mod: %s", err)
+	}
+
+	if res.Name != s.fullPath {
+		return nil, fmt.Errorf("module path mismatch: %s ≠ %s", res.Name, s.fullPath)
+	}
+
+	return goMod, nil
+}
+
+func (s *gitlabModule) getGoMod(ctx context.Context, version string) ([]byte, error) {
 	// try with pseudo version first
 	if sha := semver.Pseudo(version); len(sha) > 0 {
-		res, err := s.client.File(ctx, s.path, "go.mod", sha)
+		res, err := s.client.File(ctx, s.pathUnversioned, "go.mod", sha)
 		if err == nil {
 			return res, nil
 		}
+		res, err = s.client.File(ctx, s.path, "go.mod", sha)
+		if err == nil {
+			return res, nil
+		}
+	}
+	res, err := s.client.File(ctx, s.pathUnversioned, "go.mod", version)
+	if err == nil {
+		return res, nil
 	}
 	return s.client.File(ctx, s.path, "go.mod", version)
 }
@@ -169,9 +239,12 @@ func (s *gitlabModule) Zip(ctx context.Context, version string) (io.ReadCloser, 
 }
 
 func (s *gitlabModule) getZip(ctx context.Context, revision, version string) (io.ReadCloser, error) {
-	modInfo, err := s.client.ProjectInfo(ctx, s.path)
+	modInfo, err := s.client.ProjectInfo(ctx, s.pathUnversioned)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get project %s info: %s", s.path, err)
+		modInfo, err = s.client.ProjectInfo(ctx, s.path)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get project %s info: %s", s.path, err)
+		}
 	}
 
 	archive, err := s.client.Archive(ctx, modInfo.ID, revision)

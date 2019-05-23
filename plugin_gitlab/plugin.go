@@ -83,44 +83,34 @@ func (f *plugin) Module(req *http.Request, prefix string) (goproxy.Module, error
 		token = f.token
 	}
 
-	s1 := &gitlabModule{
-		fullPath: fullPath,
-		path:     path,
-		client:   f.apiAccess.Client(token),
-	}
-
 	// cut the tail and see if it denounces version suffix (vXYZ)
 	pos := strings.LastIndexByte(fullPath, '/')
 	if pos < 0 {
-		return overlapGitlabModule{
-			sources: []goproxy.Module{s1},
-			version: 0,
+		return &gitlabModule{
+			client:          f.apiAccess.Client(token),
+			fullPath:        fullPath,
+			path:            path,
+			pathUnversioned: path,
+			major:           0,
 		}, nil
 	}
 
 	tail := fullPath[pos+1:]
 	var ve pathVersionExtractor
 	if ok, _ := ve.Extract(tail); !ok {
-		return overlapGitlabModule{
-			sources: []goproxy.Module{s1},
-			version: 0,
+		major := ve.Version
+		pos := strings.LastIndexByte(path, '/')
+
+		return &gitlabModule{
+			client:          f.apiAccess.Client(token),
+			fullPath:        fullPath,
+			path:            path,
+			pathUnversioned: path[:pos],
+			major:           major,
 		}, nil
 	}
 
-	fullPath = fullPath[:pos]
-	path = getGitlabPath(fullPath)
-
-	s2 := &gitlabModule{
-		fullPath: fullPath,
-		path:     path,
-		client:   f.apiAccess.Client(token),
-	}
-
-	return overlapGitlabModule{
-		sources: []goproxy.Module{s1, s2},
-		version: ve.Version,
-	}, nil
-
+	return nil, fmt.Errorf("wrong module path %s", fullPath)
 }
 
 func (f *plugin) Leave(source goproxy.Module) error {
