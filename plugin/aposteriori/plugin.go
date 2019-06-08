@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"sync"
 
 	"github.com/sirkon/goproxy"
 )
@@ -19,9 +20,16 @@ func New(next goproxy.Plugin, cache FileCache) goproxy.Plugin {
 	return &plugin{next: next, cache: cache}
 }
 
+// NewCachePriority aposteriori plugin constructor with cache-priority behavior
+func NewCachePriority(next goproxy.Plugin, cache FileCache, availablity map[string]map[string]struct{}) goproxy.Plugin {
+	return &plugin{next: next, cache: cache, registry: availablity}
+}
+
 type plugin struct {
-	next  goproxy.Plugin
-	cache FileCache
+	sync.Mutex
+	next     goproxy.Plugin
+	cache    FileCache
+	registry map[string]map[string]struct{} // registry is <module path> → <version>
 }
 
 func (p *plugin) Module(req *http.Request, prefix string) (goproxy.Module, error) {
@@ -31,8 +39,8 @@ func (p *plugin) Module(req *http.Request, prefix string) (goproxy.Module, error
 	}
 
 	return &module{
-		next:  next,
-		cache: p.cache,
+		next:   next,
+		parent: p,
 	}, nil
 }
 
