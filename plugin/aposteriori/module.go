@@ -42,7 +42,7 @@ func (m *module) Versions(ctx context.Context, prefix string) (tags []string, er
 				return semver.Compare(tags[i], tags[j]) < 0
 			})
 		}
-		return versions, nil
+		return tags, nil
 	}
 	return m.next.Versions(ctx, prefix)
 }
