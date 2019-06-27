@@ -16,8 +16,8 @@ import (
 	gitlab2 "github.com/sirkon/gitlab"
 
 	"github.com/sirkon/goproxy"
-	gitlab "github.com/sirkon/goproxy/plugin_gitlab"
-	vcs "github.com/sirkon/goproxy/plugin_vcs"
+	"github.com/sirkon/goproxy/plugin/gitlab"
+	"github.com/sirkon/goproxy/plugin/vcs"
 )
 
 var listen string
@@ -75,16 +75,16 @@ func main() {
 
 	legacy, err := vcs.NewPlugin(cacheDir)
 	if err != nil {
-		log.Fatal().Err(err).Msg("exitting")
+		log.Fatal().Err(err).Msg("exiting")
 	}
 	if err := r.AddRoute("", legacy); err != nil {
-		log.Fatal().Err(err).Msg("exitting")
+		log.Fatal().Err(err).Msg("exiting")
 	}
 
 	if len(gitlabAPIURL) > 0 {
 		gl := gitlab.NewPlugin(gitlab2.NewAPIAccess(nil, gitlabAPIURL), true)
 		if err := r.AddRoute("gitlab", gl); err != nil {
-			log.Fatal().Err(err).Msg("exitting")
+			log.Fatal().Err(err).Msg("exiting")
 		}
 	}
 
@@ -107,7 +107,7 @@ func main() {
 
 	select {
 	case err := <-errCh:
-		log.Fatal().Err(err).Msg("exitting")
+		log.Fatal().Err(err).Msg("exiting")
 	case sign := <-signCh:
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()

@@ -6,6 +6,12 @@
 package modget
 
 import (
+	"fmt"
+	"os"
+	pathpkg "path"
+	"path/filepath"
+	"strings"
+
 	"github.com/sirkon/goproxy/internal/base"
 	"github.com/sirkon/goproxy/internal/cfg"
 	"github.com/sirkon/goproxy/internal/get"
@@ -19,11 +25,6 @@ import (
 	"github.com/sirkon/goproxy/internal/semver"
 	"github.com/sirkon/goproxy/internal/str"
 	"github.com/sirkon/goproxy/internal/work"
-	"fmt"
-	"os"
-	pathpkg "path"
-	"path/filepath"
-	"strings"
 )
 
 var CmdGet = &base.Command{
