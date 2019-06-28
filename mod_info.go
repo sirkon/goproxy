@@ -1,9 +1,10 @@
 package goproxy
 
 import (
-	"fmt"
 	"net/http"
 	"strings"
+
+	"github.com/pkg/errors"
 
 	"github.com/sirkon/goproxy/internal/module"
 )
@@ -48,13 +49,13 @@ func (p *modInfoExtraction) Extract(line string) (bool, error) {
 func GetModInfo(req *http.Request, prefix string) (path string, suffix string, err error) {
 	method := req.URL.Path
 	if !strings.HasPrefix(method, prefix) {
-		err = fmt.Errorf("request URL path expected to be a %s*, got %s", prefix, method)
+		err = errors.Errorf("request URL path expected to be a %s*, got %s", prefix, method)
 	}
 	method = method[len(prefix):]
 	var e modInfoExtraction
 
 	if ok, _ := e.Extract(method); !ok {
-		err = fmt.Errorf("invalid go proxy request: wrong URL `%s`", method)
+		err = errors.Errorf("invalid go proxy request: wrong URL `%s`", method)
 		return
 	}
 

@@ -1,11 +1,11 @@
 package gitlab
 
 import (
-	"fmt"
 	"net/http"
 	path2 "path"
 	"strings"
 
+	"github.com/pkg/errors"
 	"github.com/sirkon/gitlab"
 
 	"github.com/sirkon/goproxy"
@@ -78,7 +78,7 @@ func (f *plugin) Module(req *http.Request, prefix string) (goproxy.Module, error
 		var ok bool
 		token, _, ok = req.BasicAuth()
 		if !ok || len(token) == 0 {
-			return nil, fmt.Errorf("authorization required")
+			return nil, errors.New("authorization info required")
 		}
 	} else if f.needAuth {
 		token = f.token

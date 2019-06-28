@@ -9,9 +9,10 @@
 package semver
 
 import (
-	"fmt"
 	"strconv"
 	"strings"
+
+	"github.com/pkg/errors"
 )
 
 var preMinus = "pre-"
@@ -65,7 +66,7 @@ pseudopreAnonymousAreaLabel:
 		return false, nil
 	}
 	if tmpUint, err = strconv.ParseUint(tmp, 10, 64); err != nil {
-		return false, fmt.Errorf("cannot parse `%s` into field Moment(uint64): %s", tmp, err)
+		return false, errors.WithMessagef(err, "cannot parse `%s` into field Moment(uint64)", tmp)
 	}
 	p.Moment = uint64(tmpUint)
 	if len(p.Rest) <= 6 {

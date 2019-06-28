@@ -1,8 +1,9 @@
 package cascade
 
 import (
-	"fmt"
 	"net/http"
+
+	"github.com/pkg/errors"
 
 	"github.com/sirkon/goproxy"
 	"github.com/sirkon/goproxy/internal/module"
@@ -32,11 +33,11 @@ func (f *plugin) String() string {
 func (f *plugin) Module(req *http.Request, prefix string) (goproxy.Module, error) {
 	path, _, err := goproxy.GetModInfo(req, prefix)
 	if err != nil {
-		return nil, fmt.Errorf("%s invalid request: %s", req.URL.Path, err)
+		return nil, errors.WithMessagef(err, "%s invalid request", req.URL.Path)
 	}
 	reqPath, err := module.EncodePath(path)
 	if err != nil {
-		return nil, fmt.Errorf("%is invalid request: %s", req.URL.Path, err)
+		return nil, errors.WithMessagef(err, "%is invalid request", req.URL.Path)
 	}
 
 	res := &cascadeModule{

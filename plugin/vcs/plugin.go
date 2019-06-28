@@ -1,10 +1,11 @@
 package vcs
 
 import (
-	"fmt"
 	"net/http"
 	"os"
 	"sync"
+
+	"github.com/pkg/errors"
 
 	"github.com/sirkon/goproxy"
 	"github.com/sirkon/goproxy/internal/modfetch"
@@ -29,24 +30,23 @@ func NewPlugin(rootDir string) (f goproxy.Plugin, err error) {
 	stat, err := os.Stat(rootDir)
 	if os.IsNotExist(err) {
 		if err := os.MkdirAll(rootDir, 0755); err != nil {
-			return nil, fmt.Errorf("failed to create directory %s: %s", rootDir, err)
-
+			return nil, errors.WithMessagef(err, "failed to create directory `%s`", rootDir)
 		}
 	} else {
 		if !stat.IsDir() {
-			return nil, fmt.Errorf("%s is not a directory", rootDir)
+			return nil, errors.Errorf("%s is not a directory", rootDir)
 		}
 	}
 	if err = os.Chdir(rootDir); err != nil {
-		return nil, fmt.Errorf("failed to cd into %s: %s", rootDir, err)
+		return nil, errors.WithMessagef(err, "failed to cd into `%s`", rootDir)
 	}
 
 	if err = os.Setenv("GOPATH", rootDir); err != nil {
-		return nil, fmt.Errorf("failed to set up GOPATH environment variable: %s", err)
+		return nil, errors.WithMessage(err, "failed to set up GOPATH environment variable")
 	}
 
 	if err = os.Setenv("GO111MODULE", "on"); err != nil {
-		return nil, fmt.Errorf("failed to set up GO111MODULE environment variable: %s", err)
+		return nil, errors.WithMessage(err, "failed to set up GO111MODULE environment variable")
 	}
 
 	return &plugin{
@@ -90,7 +90,7 @@ func (f *plugin) getRepo(path string) (repo modfetch.Repo, err error) {
 	if !ok {
 		repo, err = modfetch.Lookup(path)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get module `%s`: %s", path, err)
+			return nil, errors.WithMessagef(err, "failed to get module `%s`", path)
 		}
 	}
 	f.inWork[path] = repo

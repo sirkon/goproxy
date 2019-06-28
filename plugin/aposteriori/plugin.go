@@ -1,10 +1,11 @@
 package aposteriori
 
 import (
-	"fmt"
 	"io"
 	"net/http"
 	"sync"
+
+	"github.com/pkg/errors"
 
 	"github.com/sirkon/goproxy"
 )
@@ -35,7 +36,7 @@ type plugin struct {
 func (p *plugin) Module(req *http.Request, prefix string) (goproxy.Module, error) {
 	next, err := p.next.Module(req, prefix)
 	if err != nil {
-		return nil, fmt.Errorf("aposteriori delegation error: %s", err)
+		return nil, errors.WithMessage(err, "aposteriori delegation error")
 	}
 
 	return &module{

@@ -2,11 +2,12 @@ package apriori
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
 	"sort"
+
+	"github.com/pkg/errors"
 
 	"github.com/sirkon/goproxy"
 	"github.com/sirkon/goproxy/semver"
@@ -27,7 +28,7 @@ func (s *aprioriModule) Versions(ctx context.Context, prefix string) (tags []str
 	}
 	for _, tag := range tags {
 		if !semver.IsValid(tag) {
-			return nil, fmt.Errorf("invalid semver value %s", tag)
+			return nil, errors.Errorf("invalid semver value %s", tag)
 		}
 	}
 	sort.Slice(tags, func(i, j int) bool {
@@ -47,7 +48,7 @@ func (s *aprioriModule) Stat(ctx context.Context, rev string) (*goproxy.RevInfo,
 func (s *aprioriModule) GoMod(ctx context.Context, version string) (data []byte, err error) {
 	item, ok := s.mod[version]
 	if !ok {
-		return nil, fmt.Errorf("module %s: version %s not found", version)
+		return nil, errors.Errorf("module %s: version %s not found", version)
 	}
 	data, err = ioutil.ReadFile(item.GoModPath)
 	if err != nil {
@@ -59,7 +60,7 @@ func (s *aprioriModule) GoMod(ctx context.Context, version string) (data []byte,
 func (s *aprioriModule) Zip(ctx context.Context, version string) (file io.ReadCloser, err error) {
 	item, ok := s.mod[version]
 	if !ok {
-		return nil, fmt.Errorf("module %s: version %s not found", version)
+		return nil, errors.Errorf("module %s: version %s not found", version)
 	}
 	file, err = os.Open(item.ArchivePath)
 	if err != nil {
@@ -70,5 +71,5 @@ func (s *aprioriModule) Zip(ctx context.Context, version string) (file io.ReadCl
 
 func (s *aprioriModule) errMsg(format string, a ...interface{}) error {
 	head := "module " + s.path + ": "
-	return fmt.Errorf(head+format, a...)
+	return errors.Errorf(head+format, a...)
 }

@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 
 	"github.com/sirkon/goproxy"
@@ -41,7 +42,7 @@ func (s *cascadeModule) Versions(ctx context.Context, prefix string) (tags []str
 
 	data, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read out list request: %s", err)
+		return nil, errors.WithMessage(err, "failed to read out list request: %s")
 	}
 
 	var res []string
@@ -64,7 +65,7 @@ func (s *cascadeModule) Stat(ctx context.Context, rev string) (*goproxy.RevInfo,
 	var dest goproxy.RevInfo
 	decoder := json.NewDecoder(resp.Body)
 	if err := decoder.Decode(&dest); err != nil {
-		return nil, fmt.Errorf("failed to decode stat data for %s: %s", s.reqMod, err)
+		return nil, errors.WithMessagef(err, "failed to decode stat data for %s", s.reqMod)
 	}
 
 	return &dest, nil
@@ -79,7 +80,7 @@ func (s *cascadeModule) GoMod(ctx context.Context, version string) (data []byte,
 
 	data, err = ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read out mod request for %s: %s", s.mod, err)
+		return nil, errors.WithMessagef(err, "failed to read out mod request for %s", s.mod)
 	}
 
 	return
@@ -97,7 +98,7 @@ func (s *cascadeModule) Zip(ctx context.Context, version string) (file io.ReadCl
 func (s *cascadeModule) makeRequest(ctx context.Context, url string) (*http.Response, error) {
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
-		return nil, fmt.Errorf("failed to generate request to %s: %s", url, err)
+		return nil, errors.WithMessagef(err,"failed to generate request to %s", url)
 	}
 	if s.basicAuth.ok {
 		req.SetBasicAuth(s.basicAuth.user, s.basicAuth.password)
@@ -106,7 +107,7 @@ func (s *cascadeModule) makeRequest(ctx context.Context, url string) (*http.Resp
 
 	resp, err := s.client.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get response from %s: %s", url, err)
+		return nil, errors.WithMessagef(err, "failed to get response from %s", url)
 	}
 
 	if resp.StatusCode != http.StatusOK {
@@ -121,7 +122,7 @@ func (s *cascadeModule) makeRequest(ctx context.Context, url string) (*http.Resp
 			return nil, err
 		}
 		zerolog.Ctx(ctx).Error().Msgf("unexpected status code %d from %s: \n%s", resp.StatusCode, url, string(data))
-		return nil, fmt.Errorf("unexpected status code %d", resp.StatusCode)
+		return nil, errors.Errorf("unexpected status code %d", resp.StatusCode)
 	}
 
 	return resp, nil
