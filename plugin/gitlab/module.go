@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"os"
 
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
@@ -188,6 +189,9 @@ func (s *gitlabModule) statWithPseudoVersion(ctx context.Context, rev string) (*
 func (s *gitlabModule) GoMod(ctx context.Context, version string) (data []byte, err error) {
 	goMod, err := s.getGoMod(ctx, version)
 	if err != nil {
+		if os.IsNotExist(err) {
+			return []byte("module " + s.fullPath), nil
+		}
 		return nil, err
 	}
 
