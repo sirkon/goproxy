@@ -15,8 +15,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-var preMinus = "pre-"
-
 // pseudo ...
 type pseudo struct {
 	Rest   string
@@ -30,7 +28,6 @@ func (p *pseudo) Extract(line string) (bool, error) {
 	p.Rest = line
 	var err error
 	var pos int
-	var rest1 string
 	var tmp string
 	var tmpUint uint64
 
@@ -42,16 +39,6 @@ func (p *pseudo) Extract(line string) (bool, error) {
 	} else {
 		return false, nil
 	}
-	rest1 = p.Rest
-
-	// Checks if the rest starts with `"pre-"` and pass it
-	if strings.HasPrefix(rest1, preMinus) {
-		rest1 = rest1[len(preMinus):]
-	} else {
-		goto pseudopreAnonymousAreaLabel
-	}
-	p.Rest = rest1
-pseudopreAnonymousAreaLabel:
 
 	// Take until 15th character if it is'-' as Moment(uint64)
 	if len(p.Rest) >= 14+1 && p.Rest[14] == '-' {

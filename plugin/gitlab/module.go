@@ -157,7 +157,7 @@ func (s *gitlabModule) statWithPseudoVersion(ctx context.Context, rev string) (*
 
 	var base string
 	if semver.Major(maxVer) < s.major {
-		base = fmt.Sprintf("v%d.0.0-pre", s.major)
+		base = fmt.Sprintf("v%d.0.0-", s.major)
 	} else {
 		major, minor, patch := semver.MajorMinorPatch(maxVer)
 		base = fmt.Sprintf("v%d.%d.%d-", major, minor, patch)
@@ -323,7 +323,7 @@ func (s *gitlabModule) getZip(ctx context.Context, revision, version string) (io
 
 		if _, err := io.Copy(fileWriter, fileData); err != nil {
 			fileData.Close()
-			return nil, errors.WithMessagef(err,"failed to copy content for %s", fileName)
+			return nil, errors.WithMessagef(err, "failed to copy content for %s", fileName)
 		}
 
 		if err := fileData.Close(); err != nil {
