@@ -160,7 +160,7 @@ func (s *gitlabModule) statWithPseudoVersion(ctx context.Context, rev string) (*
 		base = fmt.Sprintf("v%d.0.0-", s.major)
 	} else {
 		major, minor, patch := semver.MajorMinorPatch(maxVer)
-		base = fmt.Sprintf("v%d.%d.%d-", major, minor, patch)
+		base = fmt.Sprintf("v%d.%d.%d-", major, minor, patch+1)
 	}
 
 	// Should set appropriate version
