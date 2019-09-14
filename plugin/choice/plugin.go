@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/pkg/errors"
+	"github.com/sirkon/goproxy/internal/errors"
 
 	"github.com/sirkon/goproxy"
 )
@@ -38,7 +38,7 @@ func (c *choice) Module(req *http.Request, prefix string) (goproxy.Module, error
 		}
 		return src, nil
 	}
-	return nil, errors.Errorf("no suitable plugin found for request to %s", req.URL.Path)
+	return nil, errors.Newf("no suitable plugin found for request to %s", req.URL.Path)
 }
 
 func (c *choice) Leave(source goproxy.Module) error {

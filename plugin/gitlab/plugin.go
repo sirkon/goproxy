@@ -3,10 +3,12 @@ package gitlab
 import (
 	"net/http"
 	path2 "path"
+	"strconv"
 	"strings"
 
-	"github.com/pkg/errors"
 	"github.com/sirkon/gitlab"
+
+	"github.com/sirkon/goproxy/internal/errors"
 
 	"github.com/sirkon/goproxy"
 )
@@ -78,7 +80,7 @@ func (f *plugin) Module(req *http.Request, prefix string) (goproxy.Module, error
 		var ok bool
 		token, _, ok = req.BasicAuth()
 		if !ok || len(token) == 0 {
-			return nil, errors.New("authorization info required")
+			return nil, errors.New("gitlab authorization info required")
 		}
 	} else if f.needAuth {
 		token = f.token
@@ -99,7 +101,6 @@ func (f *plugin) Module(req *http.Request, prefix string) (goproxy.Module, error
 	tail := fullPath[pos+1:]
 	var ve pathVersionExtractor
 	if ok, _ := ve.Extract(tail); !ok {
-
 		return &gitlabModule{
 			client:          f.apiAccess.Client(token),
 			fullPath:        fullPath,
@@ -109,14 +110,37 @@ func (f *plugin) Module(req *http.Request, prefix string) (goproxy.Module, error
 		}, nil
 	}
 
-	unversionedPath, _ := path2.Split(path)
-	return &gitlabModule{
-		client:          f.apiAccess.Client(token),
-		fullPath:        fullPath,
-		path:            path,
-		pathUnversioned: strings.Trim(unversionedPath, "/"),
-		major:           ve.Version,
-	}, nil
+	unversionedPath, base := path2.Split(path)
+	if isVersion(base) {
+		return &gitlabModule{
+			client:          f.apiAccess.Client(token),
+			fullPath:        fullPath,
+			path:            path,
+			pathUnversioned: strings.Trim(unversionedPath, "/"),
+			major:           ve.Version,
+		}, nil
+	} else {
+		return &gitlabModule{
+			client:          f.apiAccess.Client(token),
+			fullPath:        fullPath,
+			path:            path,
+			pathUnversioned: path,
+			major:           ve.Version,
+		}, nil
+	}
+}
+
+func isVersion(s string) bool {
+	if len(s) < 2 {
+		return false
+	}
+	if !strings.HasPrefix(s, "v") {
+		return false
+	}
+	if _, err := strconv.Atoi(s[1:]); err != nil {
+		return false
+	}
+	return true
 }
 
 func (f *plugin) Leave(source goproxy.Module) error {

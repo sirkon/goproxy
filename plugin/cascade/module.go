@@ -9,8 +9,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
+	"github.com/sirkon/goproxy/internal/errors"
 
 	"github.com/sirkon/goproxy"
 )
@@ -38,11 +38,16 @@ func (s *cascadeModule) Versions(ctx context.Context, prefix string) (tags []str
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			log := zerolog.Ctx(ctx)
+			log.Error().Err(err).Msg("closing list request response")
+		}
+	}()
 
 	data, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return nil, errors.WithMessage(err, "failed to read out list request: %s")
+		return nil, errors.Wrapf(err, "cascade reading out list request")
 	}
 
 	var res []string
@@ -60,12 +65,17 @@ func (s *cascadeModule) Stat(ctx context.Context, rev string) (*goproxy.RevInfo,
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			log := zerolog.Ctx(ctx)
+			log.Error().Err(err).Msg("closing stat request response")
+		}
+	}()
 
 	var dest goproxy.RevInfo
 	decoder := json.NewDecoder(resp.Body)
 	if err := decoder.Decode(&dest); err != nil {
-		return nil, errors.WithMessagef(err, "failed to decode stat data for %s", s.reqMod)
+		return nil, errors.Wrapf(err, "cascade decoding stat data for %s", s.reqMod)
 	}
 
 	return &dest, nil
@@ -76,11 +86,16 @@ func (s *cascadeModule) GoMod(ctx context.Context, version string) (data []byte,
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			log := zerolog.Ctx(ctx)
+			log.Error().Err(err).Msg("closing mod response")
+		}
+	}()
 
 	data, err = ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return nil, errors.WithMessagef(err, "failed to read out mod request for %s", s.mod)
+		return nil, errors.Wrapf(err, "cascade reading out mod request for %s", s.mod)
 	}
 
 	return
@@ -98,7 +113,7 @@ func (s *cascadeModule) Zip(ctx context.Context, version string) (file io.ReadCl
 func (s *cascadeModule) makeRequest(ctx context.Context, url string) (*http.Response, error) {
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
-		return nil, errors.WithMessagef(err,"failed to generate request to %s", url)
+		return nil, errors.Wrapf(err, "cascade making new request to %s", url)
 	}
 	if s.basicAuth.ok {
 		req.SetBasicAuth(s.basicAuth.user, s.basicAuth.password)
@@ -107,7 +122,7 @@ func (s *cascadeModule) makeRequest(ctx context.Context, url string) (*http.Resp
 
 	resp, err := s.client.Do(req)
 	if err != nil {
-		return nil, errors.WithMessagef(err, "failed to get response from %s", url)
+		return nil, errors.Wrapf(err, "cascade getting response from %s", url)
 	}
 
 	if resp.StatusCode != http.StatusOK {
@@ -118,11 +133,9 @@ func (s *cascadeModule) makeRequest(ctx context.Context, url string) (*http.Resp
 		}()
 		data, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
-			zerolog.Ctx(ctx).Error().Err(err).Msgf("failed to get response data from %s", url)
-			return nil, err
+			return nil, errors.Wrapf(err, "cascade getting a response from %s", url)
 		}
-		zerolog.Ctx(ctx).Error().Msgf("unexpected status code %d from %s: \n%s", resp.StatusCode, url, string(data))
-		return nil, errors.Errorf("unexpected status code %d", resp.StatusCode)
+		return nil, errors.Newf("cascade unexpected status code %d (%s)", resp.StatusCode, string(data))
 	}
 
 	return resp, nil

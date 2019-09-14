@@ -3,7 +3,7 @@ package gomod
 import (
 	"strings"
 
-	"github.com/pkg/errors"
+	"github.com/sirkon/goproxy/internal/errors"
 
 	"github.com/sirkon/goproxy/internal/modfile"
 	"github.com/sirkon/goproxy/internal/modload"
@@ -94,7 +94,7 @@ func fixVersion(path, vers string) (string, error) {
 	// Avoid the query if it looks OK.
 	_, pathMajor, ok := module.SplitPathVersion(path)
 	if !ok {
-		return "", errors.Errorf("malformed module path: %s", path)
+		return "", errors.Newf("malformed module path: %s", path)
 	}
 	if vers != "" && module.CanonicalVersion(vers) == vers && module.MatchPathMajor(vers, pathMajor) {
 		return vers, nil

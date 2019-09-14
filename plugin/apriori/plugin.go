@@ -5,7 +5,7 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	"github.com/pkg/errors"
+	"github.com/sirkon/goproxy/internal/errors"
 
 	"github.com/sirkon/goproxy"
 )
@@ -27,10 +27,10 @@ func NewPlugin(path string) (goproxy.Plugin, error) {
 	var res plugin
 	data, err := ioutil.ReadFile(path)
 	if err != nil {
-		return nil, errors.WithMessage(err, "no apriori info file found")
+		return nil, errors.Wrap(err, "getting apriori file")
 	}
 	if err := json.Unmarshal(data, &res.mapping); err != nil {
-		return nil, errors.WithMessagef(err, "invalid apriori info file %s", path)
+		return nil, errors.Wrapf(err, "parsing apriori file %s", path)
 	}
 	return &res, nil
 }
@@ -46,7 +46,7 @@ func (p *plugin) Module(req *http.Request, prefix string) (goproxy.Module, error
 	}
 	modInfo, ok := p.mapping[mod]
 	if !ok {
-		return nil, errors.Errorf("no module %s found in cache", mod)
+		return nil, errors.Newf("no module %s found in cache", mod)
 	}
 	return &aprioriModule{path: mod, mod: modInfo}, nil
 }

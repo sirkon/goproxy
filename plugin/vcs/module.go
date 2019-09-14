@@ -10,6 +10,7 @@ import (
 	"github.com/rs/zerolog"
 
 	"github.com/sirkon/goproxy"
+	"github.com/sirkon/goproxy/internal/errors"
 	"github.com/sirkon/goproxy/internal/modfetch"
 )
 
@@ -22,6 +23,11 @@ func (s *vcsModule) ModulePath() string {
 }
 
 func (s *vcsModule) Versions(ctx context.Context, prefix string) (tags []string, err error) {
+	defer func() {
+		if err != nil {
+			err = errors.Wrap(err, "vcs getting versions")
+		}
+	}()
 	type data struct {
 		tags []string
 		err  error
@@ -51,7 +57,13 @@ func (s *vcsModule) Versions(ctx context.Context, prefix string) (tags []string,
 	}
 }
 
-func (s *vcsModule) Stat(ctx context.Context, rev string) (*goproxy.RevInfo, error) {
+func (s *vcsModule) Stat(ctx context.Context, rev string) (res *goproxy.RevInfo, err error) {
+	defer func() {
+		if err != nil {
+			err = errors.Wrap(err, "vcs getting stat")
+		}
+	}()
+
 	type data struct {
 		info *goproxy.RevInfo
 		err  error
@@ -85,7 +97,13 @@ func (s *vcsModule) Stat(ctx context.Context, rev string) (*goproxy.RevInfo, err
 	}
 }
 
-func (s *vcsModule) GoMod(ctx context.Context, version string) ([]byte, error) {
+func (s *vcsModule) GoMod(ctx context.Context, version string) (file []byte, err error) {
+	defer func() {
+		if err != nil {
+			err = errors.Wrap(err, "vcs getting go.mod")
+		}
+	}()
+
 	type data struct {
 		data []byte
 		err  error
@@ -117,7 +135,10 @@ func (s *vcsModule) Zip(ctx context.Context, version string) (file io.ReadCloser
 	go func() {
 		dir, err := ioutil.TempDir(".", ".downloads")
 		if err != nil {
-			zerolog.Ctx(ctx).Error().Err(err).Msg("failed to create temporary directory")
+			dataChan <- data{
+				file: nil,
+				err:  errors.Wrap(err, "vcs creating temporary directory to save source archive"),
+			}
 		}
 		defer func() {
 			if err := os.RemoveAll(dir); err != nil {
@@ -128,7 +149,7 @@ func (s *vcsModule) Zip(ctx context.Context, version string) (file io.ReadCloser
 		if err != nil {
 			dataChan <- data{
 				file: nil,
-				err:  err,
+				err:  errors.Wrap(err, "vcs getting source archive"),
 			}
 			return
 		}
@@ -137,7 +158,7 @@ func (s *vcsModule) Zip(ctx context.Context, version string) (file io.ReadCloser
 		if err != nil {
 			dataChan <- data{
 				file: nil,
-				err:  err,
+				err:  errors.Wrap(err, "vcs opening downloaded source archive"),
 			}
 			return
 		}
@@ -152,6 +173,6 @@ func (s *vcsModule) Zip(ctx context.Context, version string) (file io.ReadCloser
 	case res := <-dataChan:
 		return res.file, res.err
 	case <-ctx.Done():
-		return nil, ctx.Err()
+		return nil, errors.Wrap(ctx.Err(), "vcs getting source archive")
 	}
 }

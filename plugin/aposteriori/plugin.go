@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"sync"
 
-	"github.com/pkg/errors"
+	"github.com/sirkon/goproxy/internal/errors"
 
 	"github.com/sirkon/goproxy"
 )
@@ -36,7 +36,7 @@ type plugin struct {
 func (p *plugin) Module(req *http.Request, prefix string) (goproxy.Module, error) {
 	next, err := p.next.Module(req, prefix)
 	if err != nil {
-		return nil, errors.WithMessage(err, "aposteriori delegation error")
+		return nil, errors.Wrapf(err, "aposteriori delegation error")
 	}
 
 	return &module{

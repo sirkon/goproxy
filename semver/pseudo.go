@@ -4,15 +4,13 @@
  ldetool generate --go-string pseudo-pre.lde
  -------------------------------------------
  do not touch it with bare hands!
-*/
-
-package semver
+*/package semver
 
 import (
 	"strconv"
 	"strings"
 
-	"github.com/pkg/errors"
+	"github.com/sirkon/goproxy/internal/errors"
 )
 
 // pseudo ...
@@ -53,7 +51,7 @@ func (p *pseudo) Extract(line string) (bool, error) {
 		return false, nil
 	}
 	if tmpUint, err = strconv.ParseUint(tmp, 10, 64); err != nil {
-		return false, errors.WithMessagef(err, "cannot parse `%s` into field Moment(uint64)", tmp)
+		return false, errors.Wrapf(err, "parsing `%s` into field Moment(uint64)", tmp)
 	}
 	p.Moment = uint64(tmpUint)
 	if len(p.Rest) <= 6 {

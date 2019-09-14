@@ -3,7 +3,7 @@ package goproxy
 import (
 	"strings"
 
-	"github.com/pkg/errors"
+	"github.com/sirkon/goproxy/internal/errors"
 )
 
 type nodeExtension struct {
@@ -29,7 +29,7 @@ func (n *node) realAdd(path string, origPath string, f Plugin) error {
 		if n.f == nil {
 			n.f = f
 		} else {
-			return errors.Errorf("cannot prolong a node with given path %s as it was taken before", origPath)
+			return errors.Newf("cannot prolong a node with given path %s as it was taken before", origPath)
 		}
 		return nil
 	}

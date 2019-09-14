@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/pkg/errors"
+	"github.com/sirkon/goproxy/internal/errors"
 
 	"github.com/sirkon/goproxy/internal/str"
 	"github.com/sirkon/goproxy/semver"
@@ -46,7 +46,7 @@ func (r gitlabRepacker) Relativer(path string) (string, error) {
 	path = strings.Trim(path, "/")
 	items := strings.Split(path, "/")
 	if len(items) == 0 {
-		return "", errors.Errorf("wrong path `%s`", origPath)
+		return "", errors.Newf("wrong path `%s`", origPath)
 	}
 	items = items[1:]
 
@@ -71,7 +71,7 @@ func (r gitlabRepacker) Destinator(path string) string {
 func Standard(root string, projectPath string, version string) (FSRepacker, error) {
 	repackerBeneath, err := gitlab(projectPath, version)
 	if err != nil {
-		return nil, errors.Errorf("failed to create path repacker: %s", err)
+		return nil, errors.Newf("failed to create path repacker: %s", err)
 	}
 	return standard{
 		gitlabRepacker: repackerBeneath,
@@ -91,7 +91,7 @@ func (r standard) Relativer(path string) (string, error) {
 		path = strings.Trim(path[len(r.expectedPrefix):], "/")
 	}
 	if len(path) == 0 {
-		return "", errors.Errorf("wrong path `%s` against root %s", origPath, r.expectedPrefix)
+		return "", errors.Newf("wrong path `%s` against root %s", origPath, r.expectedPrefix)
 	}
 	if strings.HasSuffix(origPath, "/") {
 		path += "/"

@@ -2,12 +2,13 @@ package apriori
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
 	"sort"
 
-	"github.com/pkg/errors"
+	"github.com/sirkon/goproxy/internal/errors"
 
 	"github.com/sirkon/goproxy"
 	"github.com/sirkon/goproxy/semver"
@@ -28,7 +29,7 @@ func (s *aprioriModule) Versions(ctx context.Context, prefix string) (tags []str
 	}
 	for _, tag := range tags {
 		if !semver.IsValid(tag) {
-			return nil, errors.Errorf("invalid semver value %s", tag)
+			return nil, errors.Newf("apriori invalid semver value %s", tag)
 		}
 	}
 	sort.Slice(tags, func(i, j int) bool {
@@ -40,7 +41,7 @@ func (s *aprioriModule) Versions(ctx context.Context, prefix string) (tags []str
 func (s *aprioriModule) Stat(ctx context.Context, rev string) (*goproxy.RevInfo, error) {
 	res, ok := s.mod[rev]
 	if !ok {
-		return nil, s.errMsg("version %s not found", rev)
+		return nil, errors.New(s.errMsg("apriori version %s not found", rev))
 	}
 	return &res.RevInfo, nil
 }
@@ -48,11 +49,11 @@ func (s *aprioriModule) Stat(ctx context.Context, rev string) (*goproxy.RevInfo,
 func (s *aprioriModule) GoMod(ctx context.Context, version string) (data []byte, err error) {
 	item, ok := s.mod[version]
 	if !ok {
-		return nil, errors.Errorf("module %s: version %s not found", version)
+		return nil, errors.Newf("apriori module %s: version %s not found", s.path, version)
 	}
 	data, err = ioutil.ReadFile(item.GoModPath)
 	if err != nil {
-		return nil, s.errMsg("go.mod file for version %s not found: %s", version, err)
+		return nil, errors.Wrap(err, s.errMsg("getting go.mod file for version %s", version))
 	}
 	return
 }
@@ -60,16 +61,16 @@ func (s *aprioriModule) GoMod(ctx context.Context, version string) (data []byte,
 func (s *aprioriModule) Zip(ctx context.Context, version string) (file io.ReadCloser, err error) {
 	item, ok := s.mod[version]
 	if !ok {
-		return nil, errors.Errorf("module %s: version %s not found", version)
+		return nil, errors.Newf("apriori module %s: version %s not found", s.path, version)
 	}
 	file, err = os.Open(item.ArchivePath)
 	if err != nil {
-		return nil, s.errMsg("archive file for version %s not found: %s", version, err)
+		return nil, errors.Wrap(err, s.errMsg("apriori getting archive file for version %s", version))
 	}
 	return
 }
 
-func (s *aprioriModule) errMsg(format string, a ...interface{}) error {
+func (s *aprioriModule) errMsg(format string, a ...interface{}) string {
 	head := "module " + s.path + ": "
-	return errors.Errorf(head+format, a...)
+	return fmt.Sprintf(head+format, a...)
 }

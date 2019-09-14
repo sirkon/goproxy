@@ -9,10 +9,11 @@ import (
 	"io/ioutil"
 	"os"
 
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/sirkon/gitlab"
 	"github.com/sirkon/gitlab/gitlabdata"
+
+	"github.com/sirkon/goproxy/internal/errors"
 
 	"github.com/sirkon/goproxy"
 	"github.com/sirkon/goproxy/fsrepack"
@@ -35,16 +36,20 @@ func (s *gitlabModule) ModulePath() string {
 func (s *gitlabModule) Versions(ctx context.Context, prefix string) ([]string, error) {
 	tags, err := s.getVersions(ctx, prefix, s.pathUnversioned)
 	if err == nil {
-		return tags, nil
+		return tags, err
 	}
-	zerolog.Ctx(ctx).Warn().Err(err).Msgf("failed to get with unversioned path `%s`, it looks like we are dealing with a car zealot :)")
+
+	if s.pathUnversioned == s.path {
+		return nil, err
+	}
+	zerolog.Ctx(ctx).Warn().Err(err).Msgf("failed to get with unversioned path `%s` (original %s), someone is loving cars a bit too much :)", s.pathUnversioned, s.path)
 	return s.getVersions(ctx, prefix, s.path)
 }
 
 func (s *gitlabModule) getVersions(ctx context.Context, prefix string, path string) ([]string, error) {
 	tags, err := s.client.Tags(ctx, path, "")
 	if err != nil {
-		return nil, errors.WithMessage(err, "failed to get tags from gitlab repository")
+		return nil, errors.Wrapf(err, "gitlab getting tags from gitlab repository")
 	}
 
 	var resp []string
@@ -53,11 +58,15 @@ func (s *gitlabModule) getVersions(ctx context.Context, prefix string, path stri
 			resp = append(resp, tag.Name)
 		}
 	}
-	if len(resp) == 0 {
-		return nil, errors.Errorf("invalid repository %s, not tags found", path)
+	if len(resp) > 0 {
+		return resp, nil
 	}
-
-	return resp, nil
+	info, err := s.getStat(ctx, "master")
+	if err != nil {
+		zerolog.Ctx(ctx).Warn().Err(err).Msg("getting revision info for master")
+		return nil, errors.Newf("gitlab no tags found in the current repo")
+	}
+	return []string{info.Version}, nil
 }
 
 func (s *gitlabModule) Stat(ctx context.Context, rev string) (*goproxy.RevInfo, error) {
@@ -67,7 +76,7 @@ func (s *gitlabModule) Stat(ctx context.Context, rev string) (*goproxy.RevInfo, 
 	}
 
 	if major := semver.Major(res.Version); major >= 2 && s.major < major {
-		return nil, errors.Errorf("branch relates to higher major version v%d than what was expected from module path (v%d)", major, s.major)
+		return nil, errors.Newf("gitlab branch relates to higher major version v%d than what was expected from module path (v%d)", major, s.major)
 	}
 	return res, nil
 }
@@ -100,7 +109,7 @@ func (s *gitlabModule) statVersion(ctx context.Context, rev string) (*goproxy.Re
 	if err != nil {
 		tags, err = s.client.Tags(ctx, s.path, rev)
 		if err != nil {
-			return nil, errors.WithMessage(err, "failed to get tags from gitlab repository")
+			return nil, errors.Wrapf(err, "gitlab getting tags from gitlab repository")
 		}
 	}
 
@@ -116,7 +125,7 @@ func (s *gitlabModule) statVersion(ctx context.Context, rev string) (*goproxy.Re
 		}
 	}
 
-	return nil, errors.Errorf("state: unknown revision %s for %s", rev, s.path)
+	return nil, errors.Newf("gitlab state: unknown revision %s for %s", rev, s.path)
 }
 
 func (s *gitlabModule) statWithPseudoVersion(ctx context.Context, rev string) (*goproxy.RevInfo, error) {
@@ -124,11 +133,11 @@ func (s *gitlabModule) statWithPseudoVersion(ctx context.Context, rev string) (*
 	if err != nil {
 		commits, err = s.client.Commits(ctx, s.path, rev)
 		if err != nil {
-			return nil, errors.WithMessagef(err, "failed to get commits for `%s`", rev)
+			return nil, errors.Wrapf(err, "getting commits for `%s`", rev)
 		}
 	}
 	if len(commits) == 0 {
-		return nil, errors.Errorf("no commits found for revision %s", rev)
+		return nil, errors.Newf("no commits found for revision %s", rev)
 	}
 
 	commitMap := make(map[string]*gitlabdata.Commit, len(commits))
@@ -141,7 +150,7 @@ func (s *gitlabModule) statWithPseudoVersion(ctx context.Context, rev string) (*
 	if err != nil {
 		tags, err = s.client.Tags(ctx, s.path, "")
 		if err != nil {
-			return nil, errors.WithMessagef(err, "failed to get tags")
+			return nil, errors.Wrapf(err, "getting tags")
 		}
 	}
 	maxVer := "v0.0.0"
@@ -192,16 +201,16 @@ func (s *gitlabModule) GoMod(ctx context.Context, version string) (data []byte, 
 		if os.IsNotExist(err) {
 			return []byte("module " + s.fullPath), nil
 		}
-		return nil, err
+		return nil, errors.Wrap(err, "gitlab getting go.mod")
 	}
 
 	res, err := gomod.Parse("go.mod", goMod)
 	if err != nil {
-		return nil, errors.WithMessage(err, "invalid go.mod")
+		return nil, errors.Wrapf(err, "gitlab parsing repository go.mod")
 	}
 
 	if res.Name != s.fullPath {
-		return nil, errors.Errorf("module path mismatch: %s ≠ %s", res.Name, s.fullPath)
+		return nil, errors.Newf("gitlab module path is not equal to go.mod module path: %s ≠ %s", res.Name, s.fullPath)
 	}
 
 	return goMod, nil
@@ -248,18 +257,18 @@ func (s *gitlabModule) getZip(ctx context.Context, revision, version string) (io
 	if err != nil {
 		modInfo, err = s.client.ProjectInfo(ctx, s.path)
 		if err != nil {
-			return nil, errors.WithMessagef(err, "failed to get project %s info", s.path)
+			return nil, errors.Wrapf(err, "gitlab getting project %s info", s.path)
 		}
 	}
 
 	archive, err := s.client.Archive(ctx, modInfo.ID, revision)
 	if err != nil {
-		return nil, errors.WithMessage(err, "failed to get zipped archive data")
+		return nil, errors.Wrap(err, "getting zipped archive data")
 	}
 
 	repacker, err := fsrepack.Gitlab(s.fullPath, version)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "gitlab initiating repacker for gitlab archive source")
 	}
 
 	// now need to repack archive content from <pkg-name>-<hash> → <full pkg name, such as gitlab.com/user/module>, e.g.
@@ -278,27 +287,32 @@ func (s *gitlabModule) getZip(ctx context.Context, revision, version string) (io
 	// >            pkg.go
 	zipped, err := ioutil.ReadAll(archive)
 	if err != nil {
-		return nil, errors.WithMessage(err, "failed to read out archive data")
+		return nil, errors.Wrap(err, "gitlab reading gitlab source archive")
 	}
 
 	zipReader, err := zip.NewReader(bytes.NewReader(zipped), int64(len(zipped)))
 	if err != nil {
-		return nil, errors.WithMessage(err, "failed to extract zipped data")
+		return nil, errors.Wrap(err, "gitlab extracting zipped source data")
 	}
 
 	rawDest := &bufferCloser{}
 	result := rawDest
 	dest := zip.NewWriter(rawDest)
-	defer dest.Close()
+	defer func() {
+		if err := dest.Close(); err != nil {
+			logger := zerolog.Ctx(ctx)
+			logger.Error().Err(err).Msgf("closing an output archive")
+		}
+	}()
 
 	if err := dest.SetComment(zipReader.Comment); err != nil {
-		return nil, errors.WithMessage(err, "failed to set comment for output archive")
+		return nil, errors.Wrap(err, "setting comment to output archive")
 	}
 
 	for _, file := range zipReader.File {
 		tmp, err := repacker.Relativer(file.Name)
 		if err != nil {
-			return nil, errors.WithMessage(err, "failed to repack")
+			return nil, errors.Wrap(err, "gitlab relative file name computation")
 		}
 		fileName := repacker.Destinator(tmp)
 
@@ -309,7 +323,7 @@ func (s *gitlabModule) getZip(ctx context.Context, revision, version string) (io
 
 		fileWriter, err := dest.CreateHeader(&fh)
 		if err != nil {
-			return nil, errors.WithMessagef(err, "failed to copy attributes for %s", fileName)
+			return nil, errors.Wrapf(err, "copying attributes for %s", fileName)
 		}
 
 		if isDir {
@@ -318,16 +332,19 @@ func (s *gitlabModule) getZip(ctx context.Context, revision, version string) (io
 
 		fileData, err := file.Open()
 		if err != nil {
-			return nil, errors.WithMessagef(err, "failed to open file for %s", fileName)
+			return nil, errors.Wrapf(err, "opening file for %s", fileName)
 		}
 
 		if _, err := io.Copy(fileWriter, fileData); err != nil {
-			fileData.Close()
-			return nil, errors.WithMessagef(err, "failed to copy content for %s", fileName)
+			if cErr := fileData.Close(); cErr != nil {
+				logger := zerolog.Ctx(ctx)
+				logger.Error().Err(cErr).Msgf("closing a file for %s", fileName)
+			}
+			return nil, errors.Wrapf(err, "copying content for %s", fileName)
 		}
 
 		if err := fileData.Close(); err != nil {
-			return nil, errors.WithMessage(err, "failed to close zip file")
+			return nil, errors.Wrapf(err, "closing zip file for %s", fileName)
 		}
 	}
 

@@ -11,7 +11,7 @@ package gitlab
 import (
 	"strconv"
 
-	"github.com/pkg/errors"
+	"github.com/sirkon/goproxy/internal/errors"
 )
 
 // pathVersionExtractor ...
@@ -35,7 +35,7 @@ func (p *pathVersionExtractor) Extract(line string) (bool, error) {
 
 	// Take the rest as Version(int)
 	if tmpInt, err = strconv.ParseInt(p.Rest, 10, 64); err != nil {
-		return false, errors.WithMessagef(err, "cannot parse `%s` into field Version(int)", p.Rest)
+		return false, errors.Wrapf(err, "parsing `%s` into field Version(int)", p.Rest)
 	}
 	p.Version = int(tmpInt)
 	p.Rest = p.Rest[len(p.Rest):]

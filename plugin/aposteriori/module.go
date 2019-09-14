@@ -10,8 +10,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
+	"github.com/sirkon/goproxy/internal/errors"
 
 	"github.com/sirkon/goproxy"
 	"github.com/sirkon/goproxy/semver"
@@ -61,7 +61,7 @@ func (m *module) Stat(ctx context.Context, rev string) (*goproxy.RevInfo, error)
 			var dst goproxy.RevInfo
 			unmr := json.NewDecoder(res)
 			if err := unmr.Decode(&dst); err != nil {
-				return nil, errors.WithMessage(err, "invalid revision info json data: %s")
+				return nil, errors.Wrapf(err, "getting revision info: %s")
 			}
 			return &dst, nil
 		}
@@ -74,7 +74,7 @@ func (m *module) Stat(ctx context.Context, rev string) (*goproxy.RevInfo, error)
 	var dst bytes.Buffer
 	mrsr := json.NewEncoder(&dst)
 	if err := mrsr.Encode(res); err != nil {
-		return nil, errors.WithMessage(err, "failed to marshal revision info")
+		return nil, errors.Wrapf(err, "marshaling revision info")
 	}
 	p := m.relPath(res.Version, "revinfo.json")
 	if err := m.parent.cache.Set(p, &dst); err != nil {
@@ -103,7 +103,7 @@ func (m *module) GoMod(ctx context.Context, version string) (data []byte, err er
 
 	data, err = m.next.GoMod(ctx, version)
 	if err != nil {
-		return nil, errors.WithMessage(err,"aposteriori go.mod delegation error")
+		return nil, errors.Wrapf(err, "aposteriori go.mod delegation")
 	}
 
 	if err := m.parent.cache.Set(p, bytes.NewReader(data)); err != nil {
@@ -170,7 +170,7 @@ func (m *module) Zip(ctx context.Context, version string) (io.ReadCloser, error)
 
 	file, err = m.next.Zip(ctx, version)
 	if err != nil {
-		return nil, errors.WithMessage(err,"aposteriori source delegation error")
+		return nil, errors.Wrapf(err, "aposteriori source delegation")
 	}
 
 	file = &cachingReadCloser{
