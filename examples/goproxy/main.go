@@ -88,7 +88,7 @@ func main() {
 		}
 	}
 
-	m := goproxy.Middleware(r, "", &log)
+	m := goproxy.NewMiddleware(r, "", &log)
 
 	server := http.Server{
 		Addr:    listen,
