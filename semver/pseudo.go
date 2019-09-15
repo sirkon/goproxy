@@ -38,6 +38,11 @@ func (p *pseudo) Extract(line string) (bool, error) {
 		return false, nil
 	}
 
+	// Pass 0. at the start
+	if strings.HasPrefix(p.Rest, "0.") {
+		p.Rest = p.Rest[2:]
+	}
+
 	// Take until 15th character if it is'-' as Moment(uint64)
 	if len(p.Rest) >= 14+1 && p.Rest[14] == '-' {
 		pos = 14
